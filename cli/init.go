@@ -34,6 +34,7 @@ func NewRootCmd() *cobra.Command {
 
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newUnlockCmd())
+	root.AddCommand(newLockCmd())
 	root.AddCommand(newAccountCmd())
 	root.AddCommand(newBucketCmd())
 	root.AddCommand(newTransactionCmd())
@@ -215,6 +216,45 @@ func newUnlockCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
+	cmd.Flags().StringVarP(&dbPath, "db", "", "balde.db", "Path to budget database")
+
+	return cmd
+}
+
+func newLockCmd() *cobra.Command {
+	var dbPath string
+
+	cmd := &cobra.Command{
+		Use:   "lock",
+		Short: "Lock an encrypted budget database by invalidating session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if dbPath == "" {
+				dbPath = "balde.db"
+			}
+
+			config, err := store.ReadConfig(dbPath)
+			if err != nil {
+				return fmt.Errorf("read config: %w", err)
+			}
+
+			if !config.Encrypted {
+				return fmt.Errorf("database is not encrypted")
+			}
+
+			sessionPath := store.GetSessionPath(dbPath)
+			if _, err := os.Stat(sessionPath); os.IsNotExist(err) {
+				return fmt.Errorf("no active session")
+			}
+
+			if err := os.Remove(sessionPath); err != nil {
+				return fmt.Errorf("remove session: %w", err)
+			}
+
+			fmt.Println("Database locked. Session invalidated.")
+			return nil
+		},
+	}
+
 	cmd.Flags().StringVarP(&dbPath, "db", "", "balde.db", "Path to budget database")
 
 	return cmd
