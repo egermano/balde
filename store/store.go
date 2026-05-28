@@ -259,7 +259,7 @@ func OpenStore(dbPath string, password string, envPassword string, config Config
 	}
 
 	session := Session{
-		Password:      password,
+		Password:     password,
 		LastAccessed: time.Now(),
 	}
 

@@ -8,12 +8,12 @@ import (
 )
 
 type Config struct {
-	Locale            string `json:"locale,omitempty"`
-	CurrencySymbol    string `json:"currency_symbol,omitempty"`
-	DecimalSeparator  string `json:"decimal_separator,omitempty"`
+	Locale             string `json:"locale,omitempty"`
+	CurrencySymbol     string `json:"currency_symbol,omitempty"`
+	DecimalSeparator   string `json:"decimal_separator,omitempty"`
 	ThousandsSeparator string `json:"thousands_separator,omitempty"`
-	Frequency         string `json:"frequency,omitempty"`
-	Encrypted         bool   `json:"encrypted,omitempty"`
+	Frequency          string `json:"frequency,omitempty"`
+	Encrypted          bool   `json:"encrypted,omitempty"`
 }
 
 func ReadConfig(dbPath string) (Config, error) {

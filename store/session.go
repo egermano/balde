@@ -15,18 +15,18 @@ var (
 )
 
 type Session struct {
-	Password      string    `json:"password"`
+	Password     string    `json:"password"`
 	LastAccessed time.Time `json:"last_accessed"`
 }
 
 type sessionFile struct {
-	Password      string `json:"password"`
+	Password     string `json:"password"`
 	LastAccessed int64  `json:"last_accessed"`
 }
 
 func WriteSession(path string, session Session, ttl time.Duration) error {
 	sf := sessionFile{
-		Password:      session.Password,
+		Password:     session.Password,
 		LastAccessed: time.Now().Unix(),
 	}
 
@@ -62,7 +62,7 @@ func ReadSession(path string) (Session, error) {
 	}
 
 	return Session{
-		Password:      sf.Password,
+		Password:     sf.Password,
 		LastAccessed: lastAccessed,
 	}, nil
 }
@@ -74,7 +74,7 @@ func RenewSession(path string, ttl time.Duration) error {
 	}
 
 	sf := sessionFile{
-		Password:      session.Password,
+		Password:     session.Password,
 		LastAccessed: time.Now().Unix(),
 	}
 

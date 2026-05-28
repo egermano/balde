@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	scryptN      = 32768
-	scryptR      = 8
-	scryptP      = 1
-	keyLength    = 32
-	saltLength   = 16
-	nonceLength  = 12
+	scryptN     = 32768
+	scryptR     = 8
+	scryptP     = 1
+	keyLength   = 32
+	saltLength  = 16
+	nonceLength = 12
 )
 
 func DeriveKey(password string, salt []byte) ([]byte, error) {

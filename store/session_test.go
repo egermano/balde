@@ -12,7 +12,7 @@ func TestSession_Create(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	session := Session{
-		Password:      "my-password-123",
+		Password:     "my-password-123",
 		LastAccessed: time.Now(),
 	}
 
@@ -48,12 +48,12 @@ func TestSession_ReadExpired(t *testing.T) {
 
 	oldTime := time.Now().Add(-31 * time.Minute)
 	session := Session{
-		Password:      "my-password-123",
+		Password:     "my-password-123",
 		LastAccessed: oldTime, // 31 minutes ago
 	}
 
 	sf := sessionFile{
-		Password:      session.Password,
+		Password:     session.Password,
 		LastAccessed: oldTime.Unix(),
 	}
 
@@ -82,7 +82,7 @@ func TestSession_Renew(t *testing.T) {
 	sessionPath := filepath.Join(tmpDir, "balde-session-12345")
 
 	session := Session{
-		Password:      "my-password-123",
+		Password:     "my-password-123",
 		LastAccessed: time.Now().Add(-29 * time.Minute), // 29 minutes ago, still valid
 	}
 

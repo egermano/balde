@@ -113,10 +113,10 @@ func newInitCmd() *cobra.Command {
 			if encrypted {
 				cfgEnc := store.Config{
 					Frequency:          cfg.Frequency,
-					CurrencySymbol:    cfg.CurrencySymbol,
-					DecimalSeparator:  cfg.DecimalSeparator,
+					CurrencySymbol:     cfg.CurrencySymbol,
+					DecimalSeparator:   cfg.DecimalSeparator,
 					ThousandsSeparator: cfg.ThousandsSeparator,
-					Encrypted:         true,
+					Encrypted:          true,
 				}
 				if err := store.WriteConfig(dbPath, cfgEnc); err != nil {
 					return fmt.Errorf("write config: %w", err)
@@ -126,10 +126,10 @@ func newInitCmd() *cobra.Command {
 			} else {
 				cfgPlain := store.Config{
 					Frequency:          cfg.Frequency,
-					CurrencySymbol:    cfg.CurrencySymbol,
-					DecimalSeparator:  cfg.DecimalSeparator,
+					CurrencySymbol:     cfg.CurrencySymbol,
+					DecimalSeparator:   cfg.DecimalSeparator,
 					ThousandsSeparator: cfg.ThousandsSeparator,
-					Encrypted:         false,
+					Encrypted:          false,
 				}
 				if err := store.WriteConfig(dbPath, cfgPlain); err != nil {
 					return fmt.Errorf("write config: %w", err)
@@ -277,10 +277,10 @@ func newEncryptCmd() *cobra.Command {
 			encDbPath := dbPath + ".encrypted"
 			encryptedConfig := store.Config{
 				Frequency:          config.Frequency,
-				CurrencySymbol:    config.CurrencySymbol,
-				DecimalSeparator:  config.DecimalSeparator,
+				CurrencySymbol:     config.CurrencySymbol,
+				DecimalSeparator:   config.DecimalSeparator,
 				ThousandsSeparator: config.ThousandsSeparator,
-				Encrypted:         true,
+				Encrypted:          true,
 			}
 
 			encStore, err := store.OpenStore(encDbPath, password, "", encryptedConfig)
