@@ -15,13 +15,13 @@ func TestViewCmd_BucketsJSON(t *testing.T) {
 	setupInitBudget(t)
 
 	root := cli.NewRootCmd()
-	root.SetArgs([]string{"bucket", "add", "housing", "50000"})
+	root.SetArgs([]string{"bucket", "add", "extra1", "50000"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	root.Execute()
 
 	root = cli.NewRootCmd()
-	root.SetArgs([]string{"bucket", "add", "food", "30000"})
+	root.SetArgs([]string{"bucket", "add", "extra2", "30000"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	root.Execute()
@@ -40,8 +40,8 @@ func TestViewCmd_BucketsJSON(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &buckets); err != nil {
 		t.Fatalf("parse JSON: %v\noutput: %s", err, buf.String())
 	}
-	if len(buckets) != 2 {
-		t.Errorf("expected 2 buckets, got %d", len(buckets))
+	if len(buckets) != 8 {
+		t.Errorf("expected 8 buckets (6 default + 2 added), got %d", len(buckets))
 	}
 }
 

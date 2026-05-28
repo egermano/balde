@@ -55,7 +55,7 @@ func TestStatusCmd_JSON(t *testing.T) {
 		t.Errorf("expected 1 account, got %v", status["accounts"])
 	}
 	buckets, ok := status["buckets"].([]interface{})
-	if !ok || len(buckets) != 1 {
-		t.Errorf("expected 1 bucket, got %v", status["buckets"])
+	if !ok || len(buckets) != 7 {
+		t.Errorf("expected 7 buckets (6 default + 1 added), got %v", status["buckets"])
 	}
 }
