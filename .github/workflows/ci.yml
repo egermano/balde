@@ -67,7 +67,7 @@ jobs:
         run: ./bin/balde --help | grep -q "Budget manager CLI"
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: balde-binary
           path: bin/balde
