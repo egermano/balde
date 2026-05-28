@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/egermano/balde/core"
-	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +33,7 @@ func newTransactionAddCmd() *cobra.Command {
 			accountID := args[2]
 			bucketID := args[3]
 
-			s, err := store.NewSQLiteStore("balde.db")
+			s, err := openBudgetDB()
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

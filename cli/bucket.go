@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/egermano/balde/core"
-	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +30,7 @@ func newBucketAddCmd() *cobra.Command {
 				return fmt.Errorf("invalid target: %s", args[1])
 			}
 
-			s, err := store.NewSQLiteStore("balde.db")
+			s, err := openBudgetDB()
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

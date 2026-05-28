@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/egermano/balde/core"
-	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +31,7 @@ func newAccountAddCmd() *cobra.Command {
 				return fmt.Errorf("invalid balance: %s", args[2])
 			}
 
-			s, err := store.NewSQLiteStore("balde.db")
+			s, err := openBudgetDB()
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +25,7 @@ func newViewBucketsCmd() *cobra.Command {
 		Use:  "buckets",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := store.NewSQLiteStore("balde.db")
+			s, err := openBudgetDB()
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}
@@ -61,7 +60,7 @@ func newViewTransactionsCmd() *cobra.Command {
 		Use:  "transactions",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := store.NewSQLiteStore("balde.db")
+			s, err := openBudgetDB()
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

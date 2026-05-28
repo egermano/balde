@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/egermano/balde/core"
-	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +22,7 @@ func newStatusCmd() *cobra.Command {
 		Use:  "status",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := store.NewSQLiteStore("balde.db")
+			s, err := openBudgetDB()
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}
