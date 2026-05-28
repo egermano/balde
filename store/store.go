@@ -9,6 +9,23 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type Store interface {
+	Close() error
+	CreateAccount(a core.Account) error
+	GetAccount(id string) (core.Account, error)
+	ListAccounts() ([]core.Account, error)
+	UpdateAccount(a core.Account) error
+	CreateBucket(b core.Bucket) error
+	GetBucket(id string) (core.Bucket, error)
+	ListBuckets() ([]core.Bucket, error)
+	UpdateBucket(b core.Bucket) error
+	DeleteBucket(id string) error
+	CreateTransaction(t core.Transaction) error
+	GetTransaction(id string) (core.Transaction, error)
+	ListTransactions() ([]core.Transaction, error)
+	UpdateTransaction(t core.Transaction) error
+}
+
 type SQLiteStore struct {
 	db *sql.DB
 }
@@ -205,4 +222,50 @@ func (s *SQLiteStore) UpdateTransaction(t core.Transaction) error {
 		t.Amount, t.Description, t.Date.Format("2006-01-02T15:04:05Z"), t.AccountID, t.BucketID, t.Categorized, t.ID,
 	)
 	return err
+}
+
+func OpenStore(dbPath string, password string, envPassword string, config Config) (Store, error) {
+	if !config.Encrypted {
+		return NewSQLiteStore(dbPath)
+	}
+
+	if password == "" && envPassword != "" {
+		password = envPassword
+	}
+
+	sessionPath := GetSessionPath(dbPath)
+
+	if password == "" {
+		session, err := ReadSession(sessionPath)
+		if err != nil {
+			return nil, fmt.Errorf("no password provided and no valid session: %w", err)
+		}
+
+		store, err := NewEncryptedSQLiteStore(dbPath, session.Password)
+		if err != nil {
+			return nil, fmt.Errorf("open encrypted store: %w", err)
+		}
+
+		if err := RenewSession(sessionPath, 30*time.Minute); err != nil {
+			return nil, fmt.Errorf("renew session: %w", err)
+		}
+
+		return store, nil
+	}
+
+	store, err := NewEncryptedSQLiteStore(dbPath, password)
+	if err != nil {
+		return nil, fmt.Errorf("open encrypted store: %w", err)
+	}
+
+	session := Session{
+		Password:      password,
+		LastAccessed: time.Now(),
+	}
+
+	if err := WriteSession(sessionPath, session, 30*time.Minute); err != nil {
+		return nil, fmt.Errorf("write session: %w", err)
+	}
+
+	return store, nil
 }
