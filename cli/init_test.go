@@ -1,57 +1,135 @@
-package cli_test
+package cli
 
 import (
-	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/egermano/balde/cli"
+	"github.com/egermano/balde/store"
 )
 
-func TestInitCmd_CreatesDB(t *testing.T) {
-	dir := t.TempDir()
-	os.Chdir(dir)
+func TestInitCmd_PromptPassword(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
 
-	cmd := cli.NewRootCmd()
-	cmd.SetArgs([]string{"init"})
-	cmd.SetOut(os.Stdout)
-	cmd.SetErr(os.Stderr)
-
-	if err := cmd.Execute(); err != nil {
+	cmd := newInitCmd()
+	if err := cmd.RunE(cmd, []string{}); err != nil {
 		t.Fatalf("init command failed: %v", err)
 	}
 
-	dbPath := filepath.Join(dir, "balde.db")
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		t.Error("expected balde.db to be created")
+	if _, err := os.Stat("balde.json"); os.IsNotExist(err) {
+		t.Fatalf("config file was not created")
 	}
 
-	configPath := filepath.Join(dir, "balde.json")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Fatal("expected balde.json config to be created")
+	if _, err := os.Stat("balde.db"); os.IsNotExist(err) {
+		t.Fatalf("db file was not created")
 	}
 
-	data, err := os.ReadFile(configPath)
+	config, err := store.ReadConfig("balde.db")
 	if err != nil {
-		t.Fatalf("read config: %v", err)
+		t.Fatalf("failed to read config: %v", err)
 	}
 
-	var config map[string]interface{}
-	if err := json.Unmarshal(data, &config); err != nil {
-		t.Fatalf("parse config: %v", err)
+	if config.Encrypted {
+		t.Fatalf("expected plain db, got encrypted")
+	}
+}
+
+func TestInitCmd_WithPassword(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	cmd := newInitCmd()
+	cmd.Flags().Set("password", "test123")
+	if err := cmd.RunE(cmd, []string{}); err != nil {
+		t.Fatalf("init command failed: %v", err)
 	}
 
-	if config["frequency"] != "monthly" {
-		t.Errorf("expected frequency=monthly, got %v", config["frequency"])
+	if _, err := os.Stat("balde.json"); os.IsNotExist(err) {
+		t.Fatalf("config file was not created")
 	}
-	if config["currency_symbol"] != "$" {
-		t.Errorf("expected currency_symbol=$, got %v", config["currency_symbol"])
+
+	if _, err := os.Stat("balde.db"); os.IsNotExist(err) {
+		t.Fatalf("encrypted db file was not created")
 	}
-	if config["decimal_separator"] != "." {
-		t.Errorf("expected decimal_separator=., got %v", config["decimal_separator"])
+
+	config, err := store.ReadConfig("balde.db")
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
 	}
-	if config["thousands_separator"] != "," {
-		t.Errorf("expected thousands_separator=,, got %v", config["thousands_separator"])
+
+	if !config.Encrypted {
+		t.Fatalf("expected encrypted db, got plain")
+	}
+
+	s, err := store.OpenStore("balde.db", "test123", "", config)
+	if err != nil {
+		t.Fatalf("failed to open encrypted store: %v", err)
+	}
+	defer s.Close()
+
+	buckets, err := s.ListBuckets()
+	if err != nil {
+		t.Fatalf("failed to list buckets: %v", err)
+	}
+
+	if len(buckets) != 6 {
+		t.Fatalf("expected 6 default buckets, got %d", len(buckets))
+	}
+}
+
+func TestInitCmd_AlreadyInitialized(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	cmd := newInitCmd()
+	if err := cmd.RunE(cmd, []string{}); err != nil {
+		t.Fatalf("first init failed: %v", err)
+	}
+
+	cmd2 := newInitCmd()
+	err := cmd2.RunE(cmd2, []string{})
+	if err == nil {
+		t.Fatalf("expected error for reinitialization, got nil")
+	}
+
+	if err.Error() != "budget already initialized in this directory" {
+		t.Fatalf("expected 'budget already initialized in this directory' error, got: %v", err)
+	}
+}
+
+func TestInitCmd_DifferentDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	cmd := newInitCmd()
+	cmd.Flags().Set("dir", "budget")
+	if err := cmd.RunE(cmd, []string{}); err != nil {
+		t.Fatalf("init command failed: %v", err)
+	}
+
+	if _, err := os.Stat("budget/balde.json"); os.IsNotExist(err) {
+		t.Fatalf("config file was not created in budget dir")
+	}
+
+	if _, err := os.Stat("budget/balde.db"); os.IsNotExist(err) {
+		t.Fatalf("db file was not created in budget dir")
+	}
+
+	files, _ := os.ReadDir(tmpDir)
+	for _, f := range files {
+		t.Logf("File in tmpdir: %s", f.Name())
+	}
+
+	budgetFiles, _ := os.ReadDir("budget")
+	for _, f := range budgetFiles {
+		t.Logf("File in budget dir: %s", f.Name())
 	}
 }

@@ -1,12 +1,13 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/egermano/balde/core"
 	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 type Config struct {
@@ -43,10 +44,25 @@ func NewRootCmd() *cobra.Command {
 }
 
 func newInitCmd() *cobra.Command {
-	return &cobra.Command{
+	var password string
+	var dir string
+
+	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new budget",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			origDir, _ := os.Getwd()
+			defer os.Chdir(origDir)
+
+			if dir != "" {
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return fmt.Errorf("create directory: %w", err)
+				}
+				if err := os.Chdir(dir); err != nil {
+					return fmt.Errorf("change directory: %w", err)
+				}
+			}
+
 			configPath := "balde.json"
 			dbPath := "balde.db"
 
@@ -54,23 +70,101 @@ func newInitCmd() *cobra.Command {
 				return fmt.Errorf("budget already initialized in this directory")
 			}
 
-			s, err := store.NewSQLiteStore(dbPath)
+			var s store.Store
+			var err error
+
+			encrypted := false
+			if password != "" {
+				encrypted = true
+			} else {
+				fmt.Print("Enable encryption? (y/N): ")
+				var response string
+				fmt.Scanln(&response)
+				if response == "y" || response == "Y" {
+					encrypted = true
+
+					fmt.Print("Enter password: ")
+					bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+					if err != nil {
+						return fmt.Errorf("read password: %w", err)
+					}
+					password = string(bytePassword)
+					fmt.Println()
+
+					fmt.Print("Confirm password: ")
+					bytePassword2, err := term.ReadPassword(int(os.Stdin.Fd()))
+					if err != nil {
+						return fmt.Errorf("read password: %w", err)
+					}
+					password2 := string(bytePassword2)
+					fmt.Println()
+
+					if password != password2 {
+						return fmt.Errorf("passwords do not match")
+					}
+				}
+			}
+
+			cfg := DefaultConfig()
+
+			if encrypted {
+				cfgEnc := store.Config{
+					Frequency:          cfg.Frequency,
+					CurrencySymbol:    cfg.CurrencySymbol,
+					DecimalSeparator:  cfg.DecimalSeparator,
+					ThousandsSeparator: cfg.ThousandsSeparator,
+					Encrypted:         true,
+				}
+				if err := store.WriteConfig(dbPath, cfgEnc); err != nil {
+					return fmt.Errorf("write config: %w", err)
+				}
+
+				s, err = store.OpenStore(dbPath, password, os.Getenv("BALDE_PASSWORD"), cfgEnc)
+			} else {
+				cfgPlain := store.Config{
+					Frequency:          cfg.Frequency,
+					CurrencySymbol:    cfg.CurrencySymbol,
+					DecimalSeparator:  cfg.DecimalSeparator,
+					ThousandsSeparator: cfg.ThousandsSeparator,
+					Encrypted:         false,
+				}
+				if err := store.WriteConfig(dbPath, cfgPlain); err != nil {
+					return fmt.Errorf("write config: %w", err)
+				}
+
+				s, err = store.NewSQLiteStore(dbPath)
+			}
+
 			if err != nil {
 				return fmt.Errorf("create db: %w", err)
 			}
-			s.Close()
+			defer s.Close()
 
-			cfg := DefaultConfig()
-			data, err := json.MarshalIndent(cfg, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal config: %w", err)
+			budget := core.NewBudget("default", s)
+			defaultBuckets := []struct {
+				name   string
+				target int64
+			}{
+				{"financial freedom", 0},
+				{"fixed costs", 0},
+				{"pleasures", 0},
+				{"comfort", 0},
+				{"knowledge", 0},
+				{"goals", 0},
 			}
-			if err := os.WriteFile(configPath, data, 0644); err != nil {
-				return fmt.Errorf("write config: %w", err)
+			for _, db := range defaultBuckets {
+				if _, err := budget.AddBucket(db.name, db.target); err != nil {
+					return fmt.Errorf("create default bucket %s: %w", db.name, err)
+				}
 			}
 
 			fmt.Println("Budget initialized.")
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
+	cmd.Flags().StringVarP(&dir, "dir", "d", "", "Directory to initialize budget in")
+
+	return cmd
 }
