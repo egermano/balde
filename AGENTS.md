@@ -87,6 +87,7 @@ Stored alongside the SQLite DB. A user can have different budgets with different
 | `decimal_separator` | `.` |`,` for BR |
 | `thousands_separator` | `,` |`.` for BR |
 | `frequency` | `monthly` | weekly / fortnightly / monthly |
+| `encrypted` | `false` | AES-256-GCM encryption; set by `balde init --password` or `balde encrypt` |
 
 ### Frequency conversion factors
 
@@ -114,7 +115,10 @@ rain = sum(account balances) - sum(bucket balances)
 ## Commands (CLI surface)
 
 ```
-balde init                        # Create budget DB, set frequency & currency
+balde init                        # Create budget DB, optionally encrypted
+balde unlock [--password <pass>]  # Unlock encrypted DB (or use BALDE_PASSWORD env var)
+balde lock                        # Lock encrypted DB by invalidating session
+balde encrypt [--password <pass>] # Migrate plain DB to encrypted
 balde config set locale <code>    # Switch language
 balde account add <name> <type> <balance>
 balde bucket add <name> <limit>
