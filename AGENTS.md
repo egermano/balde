@@ -13,6 +13,21 @@ Every feature MUST follow the red-green-refactor cycle:
 
 No production code without a test. No refactoring without passing tests.
 
+## Dev Environment
+
+```sh
+make test          # run all tests verbose
+make test-short    # run tests without -v
+make build         # build CLI binary to bin/balde
+make lint          # go vet + gofmt
+make tidy          # go mod tidy
+go test ./core/ -run TestRain -v   # run single test
+go test ./core/ -v -count=1        # run single package
+```
+
+- Go 1.26+, module: `github.com/egermano/balde`
+- Dependencies: `cobra` (CLI), `modernc.org/sqlite` (pure Go, no CGO)
+
 ## Project Context
 
 Budget manager CLI written in **Go** using the **bucket budgeting method**. Key references:
