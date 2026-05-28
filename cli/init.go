@@ -35,6 +35,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newUnlockCmd())
 	root.AddCommand(newLockCmd())
+	root.AddCommand(newEncryptCmd())
 	root.AddCommand(newAccountCmd())
 	root.AddCommand(newBucketCmd())
 	root.AddCommand(newTransactionCmd())
@@ -210,6 +211,155 @@ func newUnlockCmd() *cobra.Command {
 			sessionPath := store.GetSessionPath(dbPath)
 			fmt.Printf("Successfully unlocked database. Session valid for 30 minutes.\n")
 			fmt.Printf("Session file: %s\n", sessionPath)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
+	cmd.Flags().StringVarP(&dbPath, "db", "", "balde.db", "Path to budget database")
+
+	return cmd
+}
+
+func newEncryptCmd() *cobra.Command {
+	var password string
+	var dbPath string
+
+	cmd := &cobra.Command{
+		Use:   "encrypt",
+		Short: "Convert a plain budget database to encrypted",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if dbPath == "" {
+				dbPath = "balde.db"
+			}
+
+			config, err := store.ReadConfig(dbPath)
+			if err != nil {
+				return fmt.Errorf("read config: %w", err)
+			}
+
+			if config.Encrypted {
+				return fmt.Errorf("database is already encrypted")
+			}
+
+			envPassword := os.Getenv("BALDE_PASSWORD")
+			if password == "" && envPassword == "" {
+				fmt.Print("Enter encryption password: ")
+				bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+				if err != nil {
+					return fmt.Errorf("read password: %w", err)
+				}
+				password = string(bytePassword)
+				fmt.Println()
+
+				fmt.Print("Confirm password: ")
+				bytePassword2, err := term.ReadPassword(int(os.Stdin.Fd()))
+				if err != nil {
+					return fmt.Errorf("read password: %w", err)
+				}
+				password2 := string(bytePassword2)
+				fmt.Println()
+
+				if password != password2 {
+					return fmt.Errorf("passwords do not match")
+				}
+			} else if password == "" {
+				password = envPassword
+			}
+
+			plainStore, err := store.NewSQLiteStore(dbPath)
+			if err != nil {
+				return fmt.Errorf("open plain store: %w", err)
+			}
+			defer plainStore.Close()
+
+			encDbPath := dbPath + ".encrypted"
+			encryptedConfig := store.Config{
+				Frequency:          config.Frequency,
+				CurrencySymbol:    config.CurrencySymbol,
+				DecimalSeparator:  config.DecimalSeparator,
+				ThousandsSeparator: config.ThousandsSeparator,
+				Encrypted:         true,
+			}
+
+			encStore, err := store.OpenStore(encDbPath, password, "", encryptedConfig)
+			if err != nil {
+				return fmt.Errorf("create encrypted store: %w", err)
+			}
+
+			accounts, err := plainStore.ListAccounts()
+			if err != nil {
+				encStore.Close()
+				return fmt.Errorf("list accounts: %w", err)
+			}
+
+			for _, acc := range accounts {
+				if err := encStore.CreateAccount(acc); err != nil {
+					encStore.Close()
+					return fmt.Errorf("copy account: %w", err)
+				}
+			}
+
+			buckets, err := plainStore.ListBuckets()
+			if err != nil {
+				encStore.Close()
+				return fmt.Errorf("list buckets: %w", err)
+			}
+
+			for _, buck := range buckets {
+				if err := encStore.CreateBucket(buck); err != nil {
+					encStore.Close()
+					return fmt.Errorf("copy bucket: %w", err)
+				}
+			}
+
+			transactions, err := plainStore.ListTransactions()
+			if err != nil {
+				encStore.Close()
+				return fmt.Errorf("list transactions: %w", err)
+			}
+
+			for _, tx := range transactions {
+				if err := encStore.CreateTransaction(tx); err != nil {
+					encStore.Close()
+					return fmt.Errorf("copy transaction: %w", err)
+				}
+			}
+
+			if err := encStore.Close(); err != nil {
+				return fmt.Errorf("close encrypted store: %w", err)
+			}
+
+			backupPath := dbPath + ".backup"
+			backupNum := 1
+			for {
+				if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+					break
+				}
+				backupNum++
+				backupPath = dbPath + ".backup." + fmt.Sprintf("%d", backupNum)
+			}
+
+			if err := os.Rename(dbPath, backupPath); err != nil {
+				return fmt.Errorf("backup original: %w", err)
+			}
+
+			if err := os.Rename(encDbPath, dbPath); err != nil {
+				os.Rename(backupPath, dbPath)
+				return fmt.Errorf("replace with encrypted: %w", err)
+			}
+
+			encryptedConfig.CurrencySymbol = config.CurrencySymbol
+			encryptedConfig.DecimalSeparator = config.DecimalSeparator
+			encryptedConfig.ThousandsSeparator = config.ThousandsSeparator
+			if err := store.WriteConfig(dbPath, encryptedConfig); err != nil {
+				return fmt.Errorf("update config: %w", err)
+			}
+
+			fmt.Printf("Database encrypted successfully.\n")
+			fmt.Printf("Original backed up to: %s\n", backupPath)
+			fmt.Printf("Session created for 30 minutes.\n")
 
 			return nil
 		},
