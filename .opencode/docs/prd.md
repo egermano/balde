@@ -12,10 +12,10 @@ Balde is a free, open-source CLI tool written in Go that implements the bucket b
 
 ### Setup & Onboarding
 
-1. As a new user, I want to run `balde init` to create a new budget database, so that I can start tracking my finances immediately
+1. As a new user, I want to run `balde init` to create a new budget database with 6 default buckets, so that I can start tracking my finances immediately
 2. As a new user, I want to be prompted to set my global frequency (weekly/fortnightly/monthly), so that all bucket allocations match my pay cycle
-3. As a new user, I want to see suggested default buckets based on the 50/30/20 rule (Housing & Utilities, Food & Transport, Insurance & Bills, Personal & Entertainment, Emergency Fund), so that I can start quickly without overthinking my setup
-4. As a new user, I want to accept, modify, or skip the suggested buckets during init, so that my budget reflects my actual life
+3. As a new user, I want the default buckets to be: financial freedom, fixed costs, pleasures, comfort, knowledge, goals, so that I can start with a proven bucket budgeting structure
+4. As a new user, I want to be able to add up to 2 custom buckets (free tier limit), so that I can personalize my budget without overcomplicating it
 5. As a new user, I want to be prompted to configure my currency format (decimal separator, thousands separator, currency symbol) during init, so that amounts display correctly for my locale
 6. As a new user, I want to run `balde config set locale pt-BR` to change the interface language, so that I can use Balde in my preferred language
 

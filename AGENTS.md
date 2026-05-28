@@ -152,7 +152,8 @@ balde status                       # JSON snapshot of entire budget state
 
 ## Constraints
 
-- Max 8 buckets — system must warn if exceeded (simplicity is a core design goal)
+- Free/opensource version has **6 fixed buckets**: financial freedom, fixed costs, pleasures, comfort, knowledge, goals. Created on `balde init`.
+- Max 8 buckets — system must warn if exceeded (2 custom buckets available in free tier).
 - MVP language: English only (architecture supports adding locales by just adding a JSON file)
 - One currency per budget
 - CSV import only in MVP; OFX/QIF post-MVP
