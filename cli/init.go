@@ -33,6 +33,7 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	root.AddCommand(newInitCmd())
+	root.AddCommand(newUnlockCmd())
 	root.AddCommand(newAccountCmd())
 	root.AddCommand(newBucketCmd())
 	root.AddCommand(newTransactionCmd())
@@ -165,6 +166,56 @@ func newInitCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
 	cmd.Flags().StringVarP(&dir, "dir", "d", "", "Directory to initialize budget in")
+
+	return cmd
+}
+
+func newUnlockCmd() *cobra.Command {
+	var password string
+	var dbPath string
+
+	cmd := &cobra.Command{
+		Use:   "unlock",
+		Short: "Unlock an encrypted budget database",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if dbPath == "" {
+				dbPath = "balde.db"
+			}
+
+			config, err := store.ReadConfig(dbPath)
+			if err != nil {
+				return fmt.Errorf("read config: %w", err)
+			}
+
+			if !config.Encrypted {
+				return fmt.Errorf("database is not encrypted")
+			}
+
+			envPassword := os.Getenv("BALDE_PASSWORD")
+			if password == "" && envPassword == "" {
+				return fmt.Errorf("password required (use --password flag or BALDE_PASSWORD env var)")
+			}
+
+			if password == "" {
+				password = envPassword
+			}
+
+			s, err := store.OpenStore(dbPath, password, "", config)
+			if err != nil {
+				return fmt.Errorf("unlock failed: %w", err)
+			}
+			defer s.Close()
+
+			sessionPath := store.GetSessionPath(dbPath)
+			fmt.Printf("Successfully unlocked database. Session valid for 30 minutes.\n")
+			fmt.Printf("Session file: %s\n", sessionPath)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
+	cmd.Flags().StringVarP(&dbPath, "db", "", "balde.db", "Path to budget database")
 
 	return cmd
 }
