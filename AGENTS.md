@@ -13,6 +13,21 @@ Every feature MUST follow the red-green-refactor cycle:
 
 No production code without a test. No refactoring without passing tests.
 
+## Dev Environment
+
+```sh
+make test          # run all tests verbose
+make test-short    # run tests without -v
+make build         # build CLI binary to bin/balde
+make lint          # go vet + gofmt
+make tidy          # go mod tidy
+go test ./core/ -run TestRain -v   # run single test
+go test ./core/ -v -count=1        # run single package
+```
+
+- Go 1.26+, module: `github.com/egermano/balde`
+- Dependencies: `cobra` (CLI), `modernc.org/sqlite` (pure Go, no CGO)
+
 ## Project Context
 
 Budget manager CLI written in **Go** using the **bucket budgeting method**. Key references:
@@ -72,6 +87,7 @@ Stored alongside the SQLite DB. A user can have different budgets with different
 | `decimal_separator` | `.` |`,` for BR |
 | `thousands_separator` | `,` |`.` for BR |
 | `frequency` | `monthly` | weekly / fortnightly / monthly |
+| `encrypted` | `false` | AES-256-GCM encryption; set by `balde init --password` or `balde encrypt` |
 
 ### Frequency conversion factors
 
@@ -99,7 +115,10 @@ rain = sum(account balances) - sum(bucket balances)
 ## Commands (CLI surface)
 
 ```
-balde init                        # Create budget DB, set frequency & currency
+balde init                        # Create budget DB, optionally encrypted
+balde unlock [--password <pass>]  # Unlock encrypted DB (or use BALDE_PASSWORD env var)
+balde lock                        # Lock encrypted DB by invalidating session
+balde encrypt [--password <pass>] # Migrate plain DB to encrypted
 balde config set locale <code>    # Switch language
 balde account add <name> <type> <balance>
 balde bucket add <name> <limit>
@@ -137,7 +156,8 @@ balde status                       # JSON snapshot of entire budget state
 
 ## Constraints
 
-- Max 8 buckets — system must warn if exceeded (simplicity is a core design goal)
+- Free/opensource version has **6 fixed buckets**: financial freedom, fixed costs, pleasures, comfort, knowledge, goals. Created on `balde init`.
+- Max 8 buckets — system must warn if exceeded (2 custom buckets available in free tier).
 - MVP language: English only (architecture supports adding locales by just adding a JSON file)
 - One currency per budget
 - CSV import only in MVP; OFX/QIF post-MVP

@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.26"
+          cache: true
+      
+      - name: Run go vet
+        run: go vet ./...
+      
+      - name: Check go fmt
+        run: |
+          if gofmt -l . | grep -v vendor; then
+            echo "Go files are not formatted. Run 'go fmt ./...'"
+            exit 1
+          fi
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.26"
+          cache: true
+      
+      - name: Run tests
+        run: go test ./... -v -race -count=1
+      
+      - name: Run tests with coverage
+        run: go test ./... -coverprofile=coverage.out -covermode=atomic
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.26"
+          cache: true
+      
+      - name: Build CLI
+        run: |
+          mkdir -p bin
+          go build -o bin/balde .
+      
+      - name: Verify binary
+        run: ./bin/balde --help | grep -q "Budget manager CLI"
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: balde-binary
+          path: bin/balde
+          retention-days: 5

@@ -2,6 +2,21 @@
 
 Para que o projeto Balde seja sustentável e possa crescer, é fundamental pensar em produtos e serviços que agreguem valor para os usuários, mesmo que a ferramenta CLI principal seja open-source e gratuita.
 
+## Modelo de Tiers (Gratuito vs Premium)
+
+A versão open-source/gratuita vem com:
+- **6 buckets fixos:** financial freedom, fixed costs, pleasures, comfort, knowledge, goals (criados automaticamente no `balde init`)
+- **Limite de 2 buckets customizados** (total de 8 buckets máximo)
+- Interface em inglês
+- Armazenamento local (SQLite)
+- Importação de CSV
+
+O tier premium (assinatura) desbloqueia:
+- **Buckets ilimitados** (customização completa)
+- Multi-idioma (pt-BR, es, fr, de, etc.)
+- Sincronização em nuvem
+- Relatórios avançados
+
 Aqui estão algumas ideias de como monetizar o projeto Balde, focando em produtos e serviços que as pessoas estariam dispostas a comprar:
 
 ## 1. Assinaturas / Recursos Premium (SaaS - Serviço Hospedado)
