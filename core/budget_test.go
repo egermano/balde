@@ -130,3 +130,59 @@ func TestAllocate_UpdatesBucketBalance(t *testing.T) {
 		t.Errorf("expected bucket balance=30000, got %d", updated.Balance)
 	}
 }
+
+func TestBudget_CalculateFillPercentage(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+
+	// Test case 1: Normal bucket with target and balance
+	t.Run("normal bucket", func(t *testing.T) {
+		bkt := core.Bucket{
+			ID:      "1",
+			Name:    "housing",
+			Target:  50000,
+			Balance: 25000,
+		}
+		
+		percent := budget.CalculateFillPercentage(bkt)
+		expected := 50.0 // 25000/50000 * 100
+		
+		if percent != expected {
+			t.Errorf("expected fill percentage %.2f, got %.2f", expected, percent)
+		}
+	})
+
+	// Test case 2: Bucket with zero target (should not crash)
+	t.Run("zero target bucket", func(t *testing.T) {
+		bkt := core.Bucket{
+			ID:      "2",
+			Name:    "financial freedom",
+			Target:  0,
+			Balance: 0,
+		}
+		
+		// This should not panic or crash with division by zero
+		percent := budget.CalculateFillPercentage(bkt)
+		
+		// According to the issue, this should show "Not set" or "-" instead of NaN
+		if percent != 0.0 { // Or some other sensible default
+			t.Errorf("expected fill percentage for zero target to be 0 or special value, got %.2f", percent)
+		}
+	})
+
+	// Test case 3: Bucket with balance but zero target
+	t.Run("zero target with balance", func(t *testing.T) {
+		bkt := core.Bucket{
+			ID:      "3",
+			Name:    "fixed costs",
+			Target:  0,
+			Balance: 100000,
+		}
+		
+		percent := budget.CalculateFillPercentage(bkt)
+		// Should handle gracefully without division by zero
+		if percent < 0 {
+			t.Errorf("fill percentage should not be negative for zero target, got %.2f", percent)
+		}
+	})
+}
