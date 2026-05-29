@@ -6,6 +6,7 @@ import (
 
 	"github.com/egermano/balde/core"
 	"github.com/egermano/balde/store"
+	"github.com/egermano/balde/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -28,8 +29,9 @@ func DefaultConfig() Config {
 
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "balde",
-		Short: "Budget manager CLI using the bucket method",
+		Use:     "balde",
+		Short:   "Budget manager CLI using the bucket method",
+		Version: fmt.Sprintf("%s (%s, %s)", version.Version, version.Commit, version.BuildDate),
 	}
 
 	root.AddCommand(newInitCmd())
