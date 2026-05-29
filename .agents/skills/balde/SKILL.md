@@ -18,12 +18,24 @@ if ! command -v balde &> /dev/null; then
 fi
 ```
 
-All commands must run from a directory containing `balde.json` and `balde.db`. If these files are missing in the current working directory, tell the user:
+All commands must run from a directory containing `balde.json` and `balde.db`. Use one of these patterns:
+
+```bash
+# Pattern 1: cd + command (recommended for bash tool)
+cd /path/to/budget && balde <command>
+
+# Pattern 2: Use workdir parameter (if available)
+balde <command>  # with workdir=/path/to/budget
+```
+
+If budget files are missing in the current working directory, tell the user:
 
 ```
 No budget found in this directory. Navigate to a directory with balde.json and balde.db,
 or run 'balde init [--dir <path>]' to create a new budget.
 ```
+
+**Important:** Only `balde init` and `balde unlock` support a `--dir` flag. All other commands must be run from within the budget directory.
 
 ## Currency Formatting
 
@@ -37,14 +49,33 @@ The CLI stores all amounts as **integer cents** (e.g., `50000` = $500.00). To fo
 2. Convert cents to display value: `value = cents / 100.0`
 
 3. Apply separators:
-   - Add thousands separator every 3 digits
+   - Add thousands separator every 3 digits from right
    - Insert decimal separator for the 2 decimal places
+   - Handle zero: show `0.00`
+   - Handle negative: prepend `-` before symbol or after (locale-dependent)
 
 4. Prepend currency symbol
 
-Example: `cents=123456` → `$1,234.56` (US) or `R$ 1.234,56` (Brazil)
+**Examples:**
+- `cents=123456` → `$1,234.56` (US)
+- `cents=123456` → `R$ 1.234,56` (Brazil)
+- `cents=0` → `$0.00`
+- `cents=-50000` → `-$50.00`
 
 **Why format this way:** The CLI outputs raw integers which are hard for users to parse. By reading the config and formatting correctly, we present data in a way that matches the user's locale and expectations.
+
+## JSON Parsing Guidelines
+
+When parsing JSON from `balde status --json`, `balde view buckets --json`, or `balde view transactions --json`:
+
+**Handle null fields:**
+```bash
+# Use jq to convert null to empty array
+accounts=$(echo "$json" | jq '.accounts // []')
+transactions=$(echo "$json" | jq '.transactions // []')
+```
+
+**Why:** When no accounts or transactions exist, the CLI returns `null` instead of `[]`, which would crash code expecting an array.
 
 ## Command Workflows
 
@@ -52,7 +83,7 @@ Example: `cents=123456` → `$1,234.56` (US) or `R$ 1.234,56` (Brazil)
 Get a complete snapshot of the budget state.
 
 ```bash
-balde status --json
+cd /path/to/budget && balde status --json
 ```
 
 Parse the JSON and present as:
@@ -71,15 +102,22 @@ Parse the JSON and present as:
 | 1  | Checking | checking  | $5,000.00 |
 
 ### Buckets
-| ID | Name             | Target    | Balance   | Fill % |
-|----|------------------|-----------|-----------|--------|
-| 1  | financial freedom| $1,000.00 | $500.00   | 50%    |
+| ID | Name             | Target    | Balance   | Fill % | Status      |
+|----|------------------|-----------|-----------|--------|-------------|
+| 1  | financial freedom| $0.00     | $500.00   | -      | No target   |
+| 2  | fixed costs      | $2,000.00 | $1,500.00 | 75%    | On track    |
 
 ### Recent Transactions (last 10)
-| ID | Date       | Description  | Amount    |
-|----|------------|--------------|-----------|
-| 1  | 2026-05-29 | Rent         | -$1,500.00 |
+| ID | Date                 | Description  | Amount    | Account | Bucket     |
+|----|----------------------|--------------|-----------|---------|------------|
+| 1  | 2026-05-29 17:17:14  | Rent         | -$1,500.00| 1       | 2          |
 ```
+
+**Fill % calculation:**
+- If target == 0: show "-" (no target set)
+- If target > 0: `fill % = (balance / target) * 100`
+
+**Date format:** Show full RFC3339 timestamp (`YYYY-MM-DD HH:MM:SS`) from JSON.
 
 **Why show all data:** `status` is the "dashboard" command — users want the full picture in one glance.
 
@@ -87,7 +125,7 @@ Parse the JSON and present as:
 List all buckets with their allocation status.
 
 ```bash
-balde view buckets --json
+cd /path/to/budget && balde view buckets --json
 ```
 
 Present as markdown table with fill percentage:
@@ -97,43 +135,46 @@ Present as markdown table with fill percentage:
 
 | ID | Name             | Target    | Balance   | Fill % | Status      |
 |----|------------------|-----------|-----------|--------|-------------|
-| 1  | financial freedom| $1,000.00 | $1,000.00 | 100%   | Full ✓      |
+| 1  | financial freedom| $0.00     | $0.00     | -      | No target   |
 | 2  | fixed costs      | $2,000.00 | $1,500.00 | 75%    | On track    |
 | 3  | pleasures        | $500.00   | $0.00     | 0%     | Empty       |
 ```
 
 Status logic:
-- 100% = "Full ✓"
-- 80-99% = "Near full"
-- 20-79% = "On track"
-- 0-19% = "Low"
-- 0% = "Empty"
+- target == 0, balance == 0: "No target"
+- target > 0, balance == 0: "Empty"
+- target > 0, balance > 0, fill < 20%: "Low"
+- target > 0, 20% ≤ fill < 80%: "On track"
+- target > 0, 80% ≤ fill < 100%: "Near full"
+- target > 0, fill == 100%: "Full ✓"
 
 ### balde view transactions
 List all transactions chronologically.
 
 ```bash
-balde view transactions --json
+cd /path/to/budget && balde view transactions --json
 ```
 
-Present with formatted amounts (red for expenses, green for income):
+Present with formatted amounts (use minus sign for expenses, no color if markdown doesn't support):
 
 ```markdown
 ## All Transactions
 
-| ID | Date       | Description    | Amount    | Account | Bucket     |
-|----|------------|----------------|-----------|---------|------------|
-| 1  | 2026-05-29 | Monthly salary | +$5,000.00| checking| (none)     |
-| 2  | 2026-05-28 | Rent           | -$1,500.00| checking| fixed costs|
+| ID | Date                 | Description    | Amount    | Account | Bucket     |
+|----|----------------------|----------------|-----------|---------|------------|
+| 1  | 2026-05-29 17:17:14  | Monthly salary | +$5,000.00| 1       | (none)     |
+| 2  | 2026-05-28 10:30:00  | Rent           | -$1,500.00| 1       | 2          |
 ```
 
-Note: Expenses are negative — format with a minus sign and red color indicator if markdown supports it.
+Note: Expenses are negative — format with a minus sign. If BucketID is empty string, show "(none)".
+
+**Important:** Transaction IDs in the CLI response may be incomplete (`id=` without value). Don't rely on the CLI output for the ID; get it from the JSON response.
 
 ### balde rain
 Show unallocated money available for distribution.
 
 ```bash
-balde rain
+cd /path/to/budget && balde rain
 ```
 
 Output format:
@@ -152,13 +193,20 @@ Use 'balde allocate <amount> <bucket_id>' to distribute to buckets.
 ### balde allocate <amount> <bucket_id>
 Move money from rain into a specific bucket.
 
-**Clarification before running:**
-- Parse the amount — if ambiguous whether income/expense, ask: "Is this an allocation (positive) or withdrawal (negative)?"
-- Check rain first — if rain < amount, warn: "Rain is only $X, you're trying to allocate $Y. Confirm overspend?"
-- Validate bucket_id — if invalid or ambiguous, ask user to specify
+**CRITICAL:** The CLI does NOT prevent over-allocation. You MUST check rain first.
+
+**Workflow:**
+1. Parse the amount — if ambiguous whether income/expense, ask: "Is this an allocation (positive) or withdrawal (negative)?"
+2. **Check rain first:**
+   ```bash
+   rain=$(cd /path/to/budget && balde rain | grep -oP '\d+(?= cents)')
+   ```
+   If rain < amount, warn: "Rain is only $X, you're trying to allocate $Y. This will result in negative rain. Continue? (y/N)"
+3. Validate bucket_id — if invalid or ambiguous, ask user to specify
+4. Resolve duplicate bucket names if user provides name instead of ID (see Clarification Rules)
 
 ```bash
-balde allocate <cents> <bucket_id>
+cd /path/to/budget && balde allocate <cents> <bucket_id>
 ```
 
 After running, show confirmation:
@@ -177,35 +225,35 @@ Add a new financial account.
 - If type is not one of `checking`, `savings`, `credit`, ask user to pick
 
 ```bash
-balde account add "<name>" "<type>" <cents>
+cd /path/to/budget && balde account add "<name>" "<type>" <cents>
 ```
 
-Confirmation:
-
+Confirmation (parse CLI output for ID):
 ```markdown
-✓ Created account: "My Checking" (checking) with balance $5,000.00
+✓ Created account: "My Checking" (checking) with balance $10,000.00
 Account ID: 1
 ```
+
+**Note:** Account IDs start at 1, not 0.
 
 ### balde bucket add <name> <target>
 Add a new bucket (envelope) for budgeting.
 
 **Clarification needed:**
-- Check bucket count — if already 8, warn: "Maximum 8 buckets reached. Free version supports 8; delete an existing bucket first."
+- Check bucket count first by running `balde status --json` — if already 8, warn: "Maximum 8 buckets reached. Free version supports 8; cannot delete buckets in current CLI."
 - If target amount ambiguous, ask user to confirm
 
 ```bash
-balde bucket add "<name>" <cents>
+cd /path/to/budget && balde bucket add "<name>" <cents>
 ```
 
 Confirmation:
-
 ```markdown
 ✓ Created bucket: "Emergency Fund" with target $5,000.00
 Bucket ID: 3
 ```
 
-**Why warn about 8 buckets:** This is a hard constraint in the free tier. Users need to know before they try to add a 9th bucket.
+**Why warn about 8 buckets:** This is a hard constraint in the free tier. Users need to know before they try to add a 9th bucket. **Important:** There is no CLI command to delete buckets.
 
 ### balde transaction add <amount> <desc> <account_id> <bucket_id>
 Record a financial transaction.
@@ -216,40 +264,47 @@ Record a financial transaction.
 - Description: If missing or too vague, ask for a meaningful description
 
 ```bash
-balde transaction add <cents> "<description>" <account_id> <bucket_id>
+cd /path/to/budget && balde transaction add <cents> "<description>" <account_id> <bucket_id>
 ```
 
-Confirmation:
-
+Confirmation (CLI output may not include ID):
 ```markdown
-✓ Recorded transaction: "-$50.00" (Coffee) from account 1 to bucket 4
+✓ Recorded transaction: "-$35.00" (Coffee) from account 1 to bucket 4
 
-Transaction ID: 15
+Transaction ID: 1  (Note: get from 'balde view transactions --json' if CLI output is incomplete)
 ```
+
+**Important:** The CLI transaction add response may show `id=` without a value. Use `balde view transactions --json` to get the actual ID.
 
 ### balde init [--password] [--dir]
 Initialize a new budget in a directory.
 
 **Clarification needed:**
 - If `--dir` not provided, confirm: "Initialize in current directory?"
-- Encryption: If no password provided, ask: "Do you want to enable encryption? (requires a password)"
-- If yes to encryption, get password securely (use `--password` flag or prompt)
+- **Non-interactive mode:** Use `echo "N" | balde init` to skip encryption prompt
+- Encryption: If user wants encryption, get password securely (use `--password` flag)
 
 ```bash
-balde init [--password <pass>] [--dir <path>]
+# Non-interactive (no encryption)
+cd /path/to/budget && echo "N" | balde init
+
+# Interactive (will prompt)
+cd /path/to/budget && balde init
+
+# With password
+cd /path/to/budget && balde init --password <pass>
 ```
 
 Output:
-
 ```markdown
 ✓ Budget initialized successfully
 
 **Location:** /path/to/directory
-**Encryption:** Enabled (password-protected)
+**Encryption:** Disabled (or password-protected if specified)
 **Default buckets:** 6 created (financial freedom, fixed costs, pleasures, comfort, knowledge, goals)
 ```
 
-**Why ask about encryption:** Encryption is optional but has UX implications (unlock required each session). Users should opt-in consciously.
+**Why use non-interactive mode:** In automated contexts, the encryption prompt may hang. Use `echo "N" | balde init` to skip it.
 
 ### balde unlock [--password] [--db]
 Unlock an encrypted budget database.
@@ -257,11 +312,15 @@ Unlock an encrypted budget database.
 **Prerequisite:** Database must be encrypted (`encrypted: true` in `balde.json`)
 
 ```bash
-balde unlock [--password <pass>]
+cd /path/to/budget && balde unlock [--password <pass>]
+```
+
+Or with `--dir` flag (only command that supports it):
+```bash
+balde unlock --dir /path/to/budget [--password <pass>]
 ```
 
 Output:
-
 ```markdown
 ✓ Database unlocked successfully
 
@@ -273,11 +332,10 @@ Output:
 Lock an encrypted database by invalidating the session.
 
 ```bash
-balde lock
+cd /path/to/budget && balde lock
 ```
 
 Output:
-
 ```markdown
 ✓ Database locked
 Session invalidated
@@ -291,11 +349,10 @@ Convert a plain database to encrypted.
 - Get password if not provided
 
 ```bash
-balde encrypt [--password <pass>]
+cd /path/to/budget && balde encrypt [--password <pass>]
 ```
 
 Output:
-
 ```markdown
 ✓ Database encrypted successfully
 
@@ -311,10 +368,18 @@ Ask the user when:
 
 1. **Ambiguous amount:** User says "50" — clarify income vs expense
 2. **Multiple matches:** User says "allocate to 'rent'" but 2 buckets match substring — list matches and ask which
-3. **Constraint violation:** User tries to add 9th bucket — warn about max 8 limit
-4. **Missing prerequisites:** No budget in directory, DB locked, or balde not installed
-5. **Unclear intent:** User says "balance" — clarify if they want `status`, `rain`, or account/bucket balances
-6. **Over-allocation:** Rain is $500, user wants to allocate $600 — confirm intent to overspend
+3. **Duplicate bucket names:** User provides bucket name that matches multiple buckets:
+   ```markdown
+   Multiple buckets match "fixed costs":
+     ID 2: fixed costs (target: $0, balance: $500.00)
+     ID 8: fixed costs (target: $2,000, balance: $0.00)
+
+   Which bucket do you want to allocate to?
+   ```
+4. **Constraint violation:** User tries to add 9th bucket — warn about max 8 limit and note that buckets cannot be deleted
+5. **Missing prerequisites:** No budget in directory, DB locked, or balde not installed
+6. **Unclear intent:** User says "balance" — clarify if they want `status`, `rain`, or account/bucket balances
+7. **Over-allocation:** Rain is $500, user wants to allocate $600 — confirm intent to overspend with explicit warning
 
 Proceed without asking when:
 
@@ -331,10 +396,11 @@ Common CLI errors and how to present them:
 |---------------|-------------------------|---------------|
 | `budget already initialized` | A budget already exists in this directory | Use existing budget or init in different directory |
 | `database is not encrypted` | Trying to unlock/encrypt a plain database | Use `balde encrypt` to add encryption |
-| `maximum of 8 buckets exceeded` | Free tier limit reached | Delete a bucket first or upgrade |
+| `maximum of 8 buckets exceeded` | Free tier limit reached | Cannot delete buckets in current CLI; upgrade or reinitialize budget |
 | `passwords do not match` | Password confirmation failed | Re-enter password carefully |
 | `no active session` | Database is locked | Run `balde unlock` first |
 | `invalid amount: <input>` | Amount parse failed | Use format: `1234` (cents) or `1234.56` with configured separators |
+| `bucket not found: <id>` | Bucket ID doesn't exist | Run `balde view buckets --json` to see valid IDs |
 
 Always show:
 1. What went wrong (plain English)
@@ -347,13 +413,13 @@ When the user asks a budget-related question:
 
 1. **Understand intent:** Parse what they want (view, modify, analyze)
 2. **Check prerequisites:** Verify balde is installed, budget exists, DB is unlocked
-3. **Run command:** Execute appropriate `balde` command
-4. **Parse output:** Prefer `--json` for structured data, fallback to plain text
-5. **Format nicely:** Convert cents → currency, create markdown tables
-6. **Present clearly:** Show results first, then context/stats
+3. **Navigate to budget directory:** Use `cd /path && balde command` pattern
+4. **Run command:** Execute appropriate `balde` command
+5. **Parse output:** Prefer `--json` for structured data, handle null fields, fallback to plain text
+6. **Format nicely:** Convert cents → currency, create markdown tables, handle edge cases
+7. **Present clearly:** Show results first, then context/stats
 
 Example response structure:
-
 ```markdown
 <Optional: What I'm doing>
 I'll check your current bucket allocation status.
@@ -365,6 +431,16 @@ I'll check your current bucket allocation status.
 <Optional: Insights or next steps>
 You have $500 of rain available. Would you like to allocate to the "fixed costs" bucket?
 ```
+
+## Known CLI Limitations
+
+The skill works around these current CLI limitations:
+
+- **No bucket deletion:** Once 8 buckets are created, you cannot add more. There is no `balde bucket delete` command.
+- **No separate account view:** To see accounts, use `balde status --json` (no `balde view accounts` command).
+- **No transaction update/delete:** Transactions are immutable once created.
+- **Interactive init prompt:** `balde init` prompts for encryption. Use `echo "N" | balde init` for non-interactive mode.
+- **No --dir flag for most commands:** Only `init` and `unlock` support `--dir`. Run other commands from budget directory.
 
 ## References
 
