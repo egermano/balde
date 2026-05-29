@@ -65,6 +65,12 @@ cd /path/to/budget && balde allocate 50000 1
 - "Make it rain" allocation workflow
 - Real-time budget status monitoring
 
+**Install the skill:**
+
+```bash
+npx skills add egermano/balde --skill balde
+```
+
 See `.agents/skills/balde/SKILL.md` for detailed agent instructions and workflows.
 
 ## Development
