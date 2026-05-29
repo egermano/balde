@@ -7,7 +7,7 @@ test-short:
 	go test ./... -short -count=1
 
 build:
-	go build -o bin/balde ./cli
+	go build -o bin/balde .
 
 vet:
 	go vet ./...
