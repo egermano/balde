@@ -2,6 +2,18 @@
 
 A budget manager CLI for the AI Agents era. Open-source, local-first, bucket budgeting method.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Requirements](#requirements)
+- [Getting Started](#getting-started)
+- [AI Agent Integration](#ai-agent-integration)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [Usage](#usage)
+- [License](#license)
+
 ## Overview
 
 Balde implements the [bucket budgeting method](https://www.budgetwithbuckets.com/guide/everything/) in a CLI tool designed for both direct use and AI agent integration. All data stays local in SQLite. Amounts are stored as integer cents — no floats.
@@ -19,6 +31,41 @@ cd balde
 go mod download
 make test
 ```
+
+## AI Agent Integration
+
+Balde is designed to work seamlessly with AI agents through its JSON output mode. The skill at `.agents/skills/balde/` provides comprehensive instructions for agents to manage budgets.
+
+**Key features for agents:**
+- All commands support `--json` output for structured data
+- Currency formatting via config-driven rules (symbol, separators)
+- Clear error messages with structured error codes
+- TDD-ready architecture with testable core logic
+
+**Example agent workflow:**
+
+```bash
+# Initialize non-interactive budget
+echo "N" | balde init --dir /path/to/budget
+
+# Get complete budget state as JSON
+balde status --json
+
+# Parse with jq for structured data
+echo "$(balde status --json)" | jq '.accounts // []'
+
+# Navigate and execute commands
+cd /path/to/budget && balde allocate 50000 1
+```
+
+**Agent skill capabilities:**
+- Budget initialization (with encryption support)
+- Account and bucket management
+- Transaction recording with categorization
+- "Make it rain" allocation workflow
+- Real-time budget status monitoring
+
+See `.agents/skills/balde/SKILL.md` for detailed agent instructions and workflows.
 
 ## Development
 
