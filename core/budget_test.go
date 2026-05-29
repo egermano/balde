@@ -143,10 +143,10 @@ func TestBudget_CalculateFillPercentage(t *testing.T) {
 			Target:  50000,
 			Balance: 25000,
 		}
-		
+
 		percent := budget.CalculateFillPercentage(bkt)
 		expected := 50.0 // 25000/50000 * 100
-		
+
 		if percent != expected {
 			t.Errorf("expected fill percentage %.2f, got %.2f", expected, percent)
 		}
@@ -160,10 +160,10 @@ func TestBudget_CalculateFillPercentage(t *testing.T) {
 			Target:  0,
 			Balance: 0,
 		}
-		
+
 		// This should not panic or crash with division by zero
 		percent := budget.CalculateFillPercentage(bkt)
-		
+
 		// According to the issue, this should show "Not set" or "-" instead of NaN
 		if percent != 0.0 { // Or some other sensible default
 			t.Errorf("expected fill percentage for zero target to be 0 or special value, got %.2f", percent)
@@ -178,7 +178,7 @@ func TestBudget_CalculateFillPercentage(t *testing.T) {
 			Target:  0,
 			Balance: 100000,
 		}
-		
+
 		percent := budget.CalculateFillPercentage(bkt)
 		// Should handle gracefully without division by zero
 		if percent < 0 {
