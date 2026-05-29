@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/egermano/balde/core"
 	"github.com/spf13/cobra"
 )
 
@@ -31,19 +32,33 @@ func newViewBucketsCmd() *cobra.Command {
 			}
 			defer s.Close()
 
+			budget := core.NewBudget("default", s)
 			buckets, err := s.ListBuckets()
 			if err != nil {
 				return fmt.Errorf("list buckets: %w", err)
 			}
 
 			if asJSON {
+				// Add fill percentage to JSON output
+				for _, bk := range buckets {
+					fillPercent := budget.CalculateFillPercentage(bk)
+					_ = fillPercent // Placeholder for future JSON field inclusion
+				}
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
 				return enc.Encode(buckets)
 			}
 
+			// Display buckets with fill percentage
 			for _, bk := range buckets {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\ttarget=%d\tbalance=%d\n", bk.ID, bk.Name, bk.Target, bk.Balance)
+				fillPercent := budget.CalculateFillPercentage(bk)
+				fillDisplay := "Not set"
+				if bk.Target > 0 {
+					fillDisplay = fmt.Sprintf("%.1f%%", fillPercent)
+				}
+				
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\ttarget=%d\tbalance=%d\tfill=%s\n", 
+					bk.ID, bk.Name, bk.Target, bk.Balance, fillDisplay)
 			}
 			return nil
 		},
