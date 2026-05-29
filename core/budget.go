@@ -113,7 +113,7 @@ func (b *Budget) CalculateFillPercentage(bucket Bucket) float64 {
 	if bucket.Target == 0 {
 		return 0.0
 	}
-	
+
 	// Calculate fill percentage: (balance / target) * 100
 	percent := float64(bucket.Balance) / float64(bucket.Target) * 100
 	return percent

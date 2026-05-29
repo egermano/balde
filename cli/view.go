@@ -56,8 +56,8 @@ func newViewBucketsCmd() *cobra.Command {
 				if bk.Target > 0 {
 					fillDisplay = fmt.Sprintf("%.1f%%", fillPercent)
 				}
-				
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\ttarget=%d\tbalance=%d\tfill=%s\n", 
+
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\ttarget=%d\tbalance=%d\tfill=%s\n",
 					bk.ID, bk.Name, bk.Target, bk.Balance, fillDisplay)
 			}
 			return nil
