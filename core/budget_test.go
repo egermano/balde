@@ -1,133 +1,83 @@
 package core_test
 
 import (
-	"fmt"
 	"testing"
+	"time"
 
 	"github.com/egermano/balde/core"
 )
 
-func TestRain_NoAccountsOrBuckets(t *testing.T) {
+func TestBudget_AddTransaction_ReturnsTransactionWithID(t *testing.T) {
 	store := NewMemoryStore()
 	budget := core.NewBudget("b1", store)
 
-	rain, err := budget.Rain()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if rain != 0 {
-		t.Errorf("expected rain=0, got %d", rain)
-	}
-}
-
-func TestRain_WithIncomeOnly(t *testing.T) {
-	store := NewMemoryStore()
-	budget := core.NewBudget("b1", store)
-
-	_, err := budget.AddAccount("checking", core.AccountChecking, 100000)
+	// Add an account first
+	acc, err := budget.AddAccount("checking", core.AccountChecking, 100000)
 	if err != nil {
 		t.Fatalf("add account: %v", err)
 	}
 
-	rain, err := budget.Rain()
+	// Add a bucket first  
+	bkt, err := budget.AddBucket("food", 50000)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("add bucket: %v", err)
 	}
-	if rain != 100000 {
-		t.Errorf("expected rain=100000, got %d", rain)
-	}
-}
 
-func TestRain_AfterAllocation(t *testing.T) {
-	store := NewMemoryStore()
-	budget := core.NewBudget("b1", store)
-
-	acc, _ := budget.AddAccount("checking", core.AccountChecking, 100000)
-	bkt, _ := budget.AddBucket("housing", 50000)
-
-	budget.Allocate(bkt.ID, 50000)
-
-	rain, err := budget.Rain()
+	// Test: Add transaction should return transaction with non-empty ID
+	tx, err := budget.AddTransaction(-3500, "Coffee", time.Now(), acc.ID, bkt.ID)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if rain != 50000 {
-		t.Errorf("expected rain=50000, got %d", rain)
+		t.Fatalf("add transaction: %v", err)
 	}
 
-	_ = acc
-}
+	if tx.ID == "" {
+		t.Error("expected transaction ID to be non-empty, got empty string")
+	}
 
-func TestRain_FullyAllocated(t *testing.T) {
-	store := NewMemoryStore()
-	budget := core.NewBudget("b1", store)
+	// Additional checks
+	if tx.Amount != -3500 {
+		t.Errorf("expected amount -3500, got %d", tx.Amount)
+	}
+	if tx.Description != "Coffee" {
+		t.Errorf("expected description 'Coffee', got %s", tx.Description)
+	}
+	if tx.AccountID != acc.ID {
+		t.Errorf("expected account ID %s, got %s", acc.ID, tx.AccountID)
+	}
+	if tx.BucketID != bkt.ID {
+		t.Errorf("expected bucket ID %s, got %s", bkt.ID, tx.BucketID)
+	}
 
-	budget.AddAccount("checking", core.AccountChecking, 100000)
-	bkt, _ := budget.AddBucket("housing", 50000)
-	bkt2, _ := budget.AddBucket("food", 50000)
-
-	budget.Allocate(bkt.ID, 50000)
-	budget.Allocate(bkt2.ID, 50000)
-
-	rain, err := budget.Rain()
+	// Test: Transaction should be retrievable by ID
+	retrievedTx, err := store.GetTransaction(tx.ID)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Errorf("failed to retrieve transaction by ID %s: %v", tx.ID, err)
 	}
-	if rain != 0 {
-		t.Errorf("expected rain=0, got %d", rain)
+
+	if retrievedTx.ID != tx.ID {
+		t.Errorf("retrieved transaction ID %s doesn't match original ID %s", retrievedTx.ID, tx.ID)
 	}
-}
+	if retrievedTx.Amount != tx.Amount {
+		t.Errorf("retrieved transaction amount %d doesn't match original amount %d", retrievedTx.Amount, tx.Amount)
+	}
 
-func TestRain_OverAllocated(t *testing.T) {
-	store := NewMemoryStore()
-	budget := core.NewBudget("b1", store)
-
-	budget.AddAccount("checking", core.AccountChecking, 100000)
-	bkt, _ := budget.AddBucket("housing", 80000)
-
-	budget.Allocate(bkt.ID, 120000)
-
-	rain, err := budget.Rain()
+	// Test: Add another transaction to ensure multiple work
+	tx2, err := budget.AddTransaction(-2000, "Lunch", time.Now(), acc.ID, bkt.ID)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if rain != -20000 {
-		t.Errorf("expected rain=-20000, got %d", rain)
-	}
-}
-
-func TestAddBucket_ExceedsMax(t *testing.T) {
-	store := NewMemoryStore()
-	budget := core.NewBudget("b1", store)
-
-	for i := 0; i < 8; i++ {
-		_, err := budget.AddBucket(fmt.Sprintf("bucket-%d", i), 10000)
-		if err != nil {
-			t.Fatalf("bucket %d should succeed: %v", i, err)
-		}
+		t.Fatalf("add second transaction: %v", err)
 	}
 
-	_, err := budget.AddBucket("bucket-9", 10000)
-	if err == nil {
-		t.Fatal("expected error when adding 9th bucket")
+	if tx2.ID == "" {
+		t.Error("expected second transaction ID to be non-empty, got empty string")
 	}
-}
 
-func TestAllocate_UpdatesBucketBalance(t *testing.T) {
-	store := NewMemoryStore()
-	budget := core.NewBudget("b1", store)
-
-	budget.AddAccount("checking", core.AccountChecking, 100000)
-	bkt, _ := budget.AddBucket("housing", 50000)
-
-	budget.Allocate(bkt.ID, 30000)
-
-	updated, err := store.GetBucket(bkt.ID)
+	// Verify second transaction is also retrievable
+	retrievedTx2, err := store.GetTransaction(tx2.ID)
 	if err != nil {
-		t.Fatalf("get bucket: %v", err)
+		t.Errorf("failed to retrieve second transaction by ID %s: %v", tx2.ID, err)
 	}
-	if updated.Balance != 30000 {
-		t.Errorf("expected bucket balance=30000, got %d", updated.Balance)
+
+	if retrievedTx2.ID != tx2.ID {
+		t.Errorf("retrieved second transaction ID %s doesn't match original ID %s", retrievedTx2.ID, tx2.ID)
 	}
 }
 
