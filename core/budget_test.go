@@ -17,7 +17,7 @@ func TestBudget_AddTransaction_ReturnsTransactionWithID(t *testing.T) {
 		t.Fatalf("add account: %v", err)
 	}
 
-	// Add a bucket first  
+	// Add a bucket first
 	bkt, err := budget.AddBucket("food", 50000)
 	if err != nil {
 		t.Fatalf("add bucket: %v", err)
