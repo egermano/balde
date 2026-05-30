@@ -30,15 +30,15 @@ func TestSQLiteStore_ListAccounts_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list accounts: %v", err)
 	}
-	
+
 	t.Logf("accounts result: %v (type: %T)", accounts, accounts)
 	t.Logf("accounts == nil: %v", accounts == nil)
 	t.Logf("len(accounts): %d", len(accounts))
-	
+
 	if accounts == nil {
 		t.Error("expected empty slice, got nil")
 	}
-	
+
 	if len(accounts) != 0 {
 		t.Errorf("expected 0 accounts, got %d", len(accounts))
 	}
@@ -52,11 +52,11 @@ func TestSQLiteStore_ListTransactions_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list transactions: %v", err)
 	}
-	
+
 	if transactions == nil {
 		t.Error("expected empty slice, got nil")
 	}
-	
+
 	if len(transactions) != 0 {
 		t.Errorf("expected 0 transactions, got %d", len(transactions))
 	}
@@ -70,11 +70,11 @@ func TestSQLiteStore_ListBuckets_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list buckets: %v", err)
 	}
-	
+
 	if buckets == nil {
 		t.Error("expected empty slice, got nil")
 	}
-	
+
 	if len(buckets) != 0 {
 		t.Errorf("expected 0 buckets, got %d", len(buckets))
 	}
