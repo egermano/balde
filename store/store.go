@@ -102,7 +102,7 @@ func (s *SQLiteStore) ListAccounts() ([]core.Account, error) {
 	}
 	defer rows.Close()
 
-	var accounts []core.Account
+	var accounts = make([]core.Account, 0)
 	for rows.Next() {
 		var a core.Account
 		if err := rows.Scan(&a.ID, &a.Name, &a.Type, &a.Balance); err != nil {
@@ -147,7 +147,7 @@ func (s *SQLiteStore) ListBuckets() ([]core.Bucket, error) {
 	}
 	defer rows.Close()
 
-	var buckets []core.Bucket
+	var buckets = make([]core.Bucket, 0)
 	for rows.Next() {
 		var b core.Bucket
 		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID); err != nil {
@@ -201,7 +201,7 @@ func (s *SQLiteStore) ListTransactions() ([]core.Transaction, error) {
 	}
 	defer rows.Close()
 
-	var txs []core.Transaction
+	var txs = make([]core.Transaction, 0)
 	for rows.Next() {
 		var tx core.Transaction
 		var dateStr string
