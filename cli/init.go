@@ -51,6 +51,8 @@ func NewRootCmd() *cobra.Command {
 func newInitCmd() *cobra.Command {
 	var password string
 	var dir string
+	var noEncryption bool
+	var nonInteractive bool
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -170,6 +172,8 @@ func newInitCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
 	cmd.Flags().StringVarP(&dir, "dir", "d", "", "Directory to initialize budget in")
+	cmd.Flags().BoolVar(&noEncryption, "no-encryption", false, "Disable encryption (useful for automation")
+	cmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "Run in non-interactive mode (reads from BALDE_ENCRYPTION env var)")
 
 	return cmd
 }
