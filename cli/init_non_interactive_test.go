@@ -50,7 +50,7 @@ func TestInitCmd_NonInteractive_EncryptionEnvVar(t *testing.T) {
 	// Set environment variable to enable encryption
 	os.Setenv("BALDE_ENCRYPTION", "true")
 	defer os.Unsetenv("BALDE_ENCRYPTION")
-	
+
 	// Set password via environment variable
 	os.Setenv("BALDE_PASSWORD", "test123")
 	defer os.Unsetenv("BALDE_PASSWORD")
