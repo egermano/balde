@@ -74,6 +74,7 @@ func (b *Budget) AddTransaction(amount int64, description string, date time.Time
 		Date:        date,
 		AccountID:   accountID,
 		BucketID:    bucketID,
+		Categorized: bucketID != "",
 	}
 	if err := b.store.CreateTransaction(t); err != nil {
 		return Transaction{}, fmt.Errorf("add transaction: %w", err)
@@ -85,6 +86,17 @@ func (b *Budget) AddTransaction(amount int64, description string, date time.Time
 		return Transaction{}, fmt.Errorf("add transaction: %w", err)
 	}
 	return transactions[len(transactions)-1], nil
+}
+
+func (b *Budget) DeleteTransaction(id string) (Transaction, error) {
+	t, err := b.store.GetTransaction(id)
+	if err != nil {
+		return Transaction{}, fmt.Errorf("delete transaction: %w", err)
+	}
+	if err := b.store.DeleteTransaction(id); err != nil {
+		return Transaction{}, fmt.Errorf("delete transaction: %w", err)
+	}
+	return t, nil
 }
 
 func (b *Budget) Allocate(bucketID string, amount int64) error {

@@ -117,6 +117,94 @@ func TestBudget_AddTransaction_ReturnsTransactionWithID(t *testing.T) {
 	}
 }
 
+func TestBudget_AddTransaction_AppliesCategorizedExpenseToBalances(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+
+	account, err := budget.AddAccount("checking", core.AccountChecking, 10000)
+	if err != nil {
+		t.Fatalf("add account: %v", err)
+	}
+	bucket, err := budget.AddBucket("food", 5000)
+	if err != nil {
+		t.Fatalf("add bucket: %v", err)
+	}
+
+	if _, err := budget.AddTransaction(-2500, "groceries", time.Now(), account.ID, bucket.ID); err != nil {
+		t.Fatalf("add transaction: %v", err)
+	}
+
+	account, err = store.GetAccount(account.ID)
+	if err != nil {
+		t.Fatalf("get account: %v", err)
+	}
+	if account.Balance != 7500 {
+		t.Errorf("expected account balance 7500, got %d", account.Balance)
+	}
+
+	bucket, err = store.GetBucket(bucket.ID)
+	if err != nil {
+		t.Fatalf("get bucket: %v", err)
+	}
+	if bucket.Balance != -2500 {
+		t.Errorf("expected bucket balance -2500, got %d", bucket.Balance)
+	}
+}
+
+func TestBudget_DeleteTransaction_ReversesCategorizedBalances(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+	account, _ := budget.AddAccount("checking", core.AccountChecking, 10000)
+	bucket, _ := budget.AddBucket("food", 5000)
+	tx, err := budget.AddTransaction(-2500, "groceries", time.Now(), account.ID, bucket.ID)
+	if err != nil {
+		t.Fatalf("add transaction: %v", err)
+	}
+
+	deleted, err := budget.DeleteTransaction(tx.ID)
+	if err != nil {
+		t.Fatalf("delete transaction: %v", err)
+	}
+	if deleted.ID != tx.ID || deleted.Description != "groceries" {
+		t.Errorf("unexpected deleted transaction: %+v", deleted)
+	}
+
+	account, _ = store.GetAccount(account.ID)
+	bucket, _ = store.GetBucket(bucket.ID)
+	if account.Balance != 10000 {
+		t.Errorf("expected account balance 10000, got %d", account.Balance)
+	}
+	if bucket.Balance != 0 {
+		t.Errorf("expected bucket balance 0, got %d", bucket.Balance)
+	}
+	if _, err := store.GetTransaction(tx.ID); err == nil {
+		t.Error("expected transaction to be deleted")
+	}
+}
+
+func TestBudget_AddTransaction_UncategorizedOnlyAffectsAccount(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+	account, _ := budget.AddAccount("checking", core.AccountChecking, 10000)
+	bucket, _ := budget.AddBucket("food", 5000)
+
+	tx, err := budget.AddTransaction(2500, "income", time.Now(), account.ID, "")
+	if err != nil {
+		t.Fatalf("add transaction: %v", err)
+	}
+	if tx.Categorized {
+		t.Error("expected transaction without bucket to be uncategorized")
+	}
+	account, _ = store.GetAccount(account.ID)
+	bucket, _ = store.GetBucket(bucket.ID)
+	if account.Balance != 12500 {
+		t.Errorf("expected account balance 12500, got %d", account.Balance)
+	}
+	if bucket.Balance != 0 {
+		t.Errorf("expected unchanged bucket balance 0, got %d", bucket.Balance)
+	}
+}
+
 func TestBudget_CalculateFillPercentage(t *testing.T) {
 	store := NewMemoryStore()
 	budget := core.NewBudget("b1", store)

@@ -24,7 +24,7 @@ type Store interface {
 	CreateTransaction(t core.Transaction) error
 	GetTransaction(id string) (core.Transaction, error)
 	ListTransactions() ([]core.Transaction, error)
-	UpdateTransaction(t core.Transaction) error
+	DeleteTransaction(id string) error
 }
 
 type SQLiteStore struct {
@@ -148,11 +148,36 @@ func (s *SQLiteStore) DeleteBucket(id string) error {
 }
 
 func (s *SQLiteStore) CreateTransaction(t core.Transaction) error {
-	_, err := s.db.Exec(
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", t.Amount, t.AccountID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := result.RowsAffected(); rows != 1 {
+		return fmt.Errorf("account not found: %s", t.AccountID)
+	}
+	if t.Categorized {
+		result, err = tx.Exec("UPDATE buckets SET balance = balance + ? WHERE id = ?", t.Amount, t.BucketID)
+		if err != nil {
+			return err
+		}
+		if rows, _ := result.RowsAffected(); rows != 1 {
+			return fmt.Errorf("bucket not found: %s", t.BucketID)
+		}
+	}
+	_, err = tx.Exec(
 		"INSERT INTO transactions (amount, description, date, account_id, bucket_id, categorized) VALUES (?, ?, ?, ?, ?, ?)",
 		t.Amount, t.Description, t.Date.Format("2006-01-02T15:04:05Z"), t.AccountID, t.BucketID, t.Categorized,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *SQLiteStore) GetTransaction(id string) (core.Transaction, error) {
@@ -192,12 +217,41 @@ func (s *SQLiteStore) ListTransactions() ([]core.Transaction, error) {
 	return txs, nil
 }
 
-func (s *SQLiteStore) UpdateTransaction(t core.Transaction) error {
-	_, err := s.db.Exec(
-		"UPDATE transactions SET amount = ?, description = ?, date = ?, account_id = ?, bucket_id = ?, categorized = ? WHERE id = ?",
-		t.Amount, t.Description, t.Date.Format("2006-01-02T15:04:05Z"), t.AccountID, t.BucketID, t.Categorized, t.ID,
-	)
-	return err
+func (s *SQLiteStore) DeleteTransaction(id string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var t core.Transaction
+	var categorized int
+	err = tx.QueryRow(
+		"SELECT amount, account_id, bucket_id, categorized FROM transactions WHERE id = ?", id,
+	).Scan(&t.Amount, &t.AccountID, &t.BucketID, &categorized)
+	if err != nil {
+		return fmt.Errorf("transaction not found: %s", id)
+	}
+	result, err := tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", t.Amount, t.AccountID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := result.RowsAffected(); rows != 1 {
+		return fmt.Errorf("account not found: %s", t.AccountID)
+	}
+	if categorized == 1 {
+		result, err = tx.Exec("UPDATE buckets SET balance = balance - ? WHERE id = ?", t.Amount, t.BucketID)
+		if err != nil {
+			return err
+		}
+		if rows, _ := result.RowsAffected(); rows != 1 {
+			return fmt.Errorf("bucket not found: %s", t.BucketID)
+		}
+	}
+	if _, err := tx.Exec("DELETE FROM transactions WHERE id = ?", id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func OpenStore(dbPath string, password string, envPassword string, config Config) (Store, error) {

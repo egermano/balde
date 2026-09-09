@@ -246,13 +246,19 @@ func TestSQLiteStore_DeleteBucket(t *testing.T) {
 func TestSQLiteStore_CreateAndGetTransaction(t *testing.T) {
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
+	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking}); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "housing", BudgetID: "b1"}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
 
 	tx := core.Transaction{
 		Amount:      -50000,
 		Description: "rent",
 		Date:        parseDate("2025-01-15"),
-		AccountID:   "acc-1",
-		BucketID:    "bkt-1",
+		AccountID:   "1",
+		BucketID:    "1",
 	}
 	if err := s.CreateTransaction(tx); err != nil {
 		t.Fatalf("create transaction: %v", err)
@@ -273,11 +279,11 @@ func TestSQLiteStore_CreateAndGetTransaction(t *testing.T) {
 	if got.Description != "rent" {
 		t.Errorf("expected description=rent, got %s", got.Description)
 	}
-	if got.AccountID != "acc-1" {
-		t.Errorf("expected account_id=acc-1, got %s", got.AccountID)
+	if got.AccountID != "1" {
+		t.Errorf("expected account_id=1, got %s", got.AccountID)
 	}
-	if got.BucketID != "bkt-1" {
-		t.Errorf("expected bucket_id=bkt-1, got %s", got.BucketID)
+	if got.BucketID != "1" {
+		t.Errorf("expected bucket_id=1, got %s", got.BucketID)
 	}
 	if got.ID == "" {
 		t.Error("expected non-empty ID")
@@ -292,36 +298,86 @@ func TestSQLiteStore_CreateAndGetTransaction(t *testing.T) {
 	}
 }
 
-func TestSQLiteStore_UpdateTransaction(t *testing.T) {
+func TestSQLiteStore_CreateTransaction_AtomicallyAppliesBalances(t *testing.T) {
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	s.CreateTransaction(core.Transaction{
-		Amount:      -50000,
-		Description: "rent",
-		Date:        parseDate("2025-01-15"),
-		AccountID:   "acc-1",
-		BucketID:    "bkt-1",
+	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
+
+	if err := s.CreateTransaction(core.Transaction{
+		Amount: -2500, Description: "groceries", Date: parseDate("2025-01-15"),
+		AccountID: "1", BucketID: "1", Categorized: true,
+	}); err != nil {
+		t.Fatalf("create transaction: %v", err)
+	}
+
+	account, _ := s.GetAccount("1")
+	bucket, _ := s.GetBucket("1")
+	if account.Balance != 7500 {
+		t.Errorf("expected account balance 7500, got %d", account.Balance)
+	}
+	if bucket.Balance != -2500 {
+		t.Errorf("expected bucket balance -2500, got %d", bucket.Balance)
+	}
+}
+
+func TestSQLiteStore_CreateTransaction_RollsBackWhenBucketDoesNotExist(t *testing.T) {
+	s, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	err := s.CreateTransaction(core.Transaction{
+		Amount: -2500, Description: "groceries", Date: parseDate("2025-01-15"),
+		AccountID: "1", BucketID: "missing", Categorized: true,
 	})
-
-	txs, _ := s.ListTransactions()
-	tx := txs[0]
-	tx.BucketID = "bkt-2"
-	tx.Categorized = true
-
-	if err := s.UpdateTransaction(tx); err != nil {
-		t.Fatalf("update transaction: %v", err)
+	if err == nil {
+		t.Fatal("expected create transaction to fail")
 	}
 
-	updated, err := s.GetTransaction(tx.ID)
-	if err != nil {
-		t.Fatalf("get transaction: %v", err)
+	account, _ := s.GetAccount("1")
+	if account.Balance != 10000 {
+		t.Errorf("expected unchanged account balance 10000, got %d", account.Balance)
 	}
-	if updated.BucketID != "bkt-2" {
-		t.Errorf("expected bucket_id=bkt-2, got %s", updated.BucketID)
+	transactions, _ := s.ListTransactions()
+	if len(transactions) != 0 {
+		t.Errorf("expected no transaction, got %d", len(transactions))
 	}
-	if !updated.Categorized {
-		t.Error("expected categorized=true")
+}
+
+func TestSQLiteStore_DeleteTransaction_AtomicallyReversesBalances(t *testing.T) {
+	s, cleanup := setupTestDB(t)
+	defer cleanup()
+	s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000})
+	s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"})
+	if err := s.CreateTransaction(core.Transaction{
+		Amount: -2500, Description: "groceries", Date: parseDate("2025-01-15"),
+		AccountID: "1", BucketID: "1", Categorized: true,
+	}); err != nil {
+		t.Fatalf("create transaction: %v", err)
+	}
+
+	if err := s.DeleteTransaction("1"); err != nil {
+		t.Fatalf("delete transaction: %v", err)
+	}
+
+	account, _ := s.GetAccount("1")
+	bucket, _ := s.GetBucket("1")
+	if account.Balance != 10000 {
+		t.Errorf("expected account balance 10000, got %d", account.Balance)
+	}
+	if bucket.Balance != 0 {
+		t.Errorf("expected bucket balance 0, got %d", bucket.Balance)
+	}
+	if _, err := s.GetTransaction("1"); err == nil {
+		t.Error("expected transaction to be deleted")
 	}
 }
 
