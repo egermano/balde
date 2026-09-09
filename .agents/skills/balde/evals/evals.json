@@ -1,0 +1,23 @@
+{
+  "skill_name": "balde",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Show me my current budget status and how much rain I have available to allocate",
+      "expected_output": "The skill should run 'balde status --json', parse the JSON response, and present a formatted markdown table showing accounts, buckets, transactions count, and rain amount formatted with currency (e.g., $1,234.56 instead of 123456 cents). It should also run 'balde rain' to show the unallocated amount separately.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want to allocate $500 to my 'fixed costs' bucket. Can you do that and show me the updated status?",
+      "expected_output": "The skill should: 1) Check current rain with 'balde rain', 2) Parse the bucket list to find 'fixed costs' bucket ID (or ask if ambiguous), 3) Convert $500 to cents (50000), 4) Run 'balde allocate 50000 <bucket_id>', 5) Show confirmation and updated rain balance. If rain < $500, it should warn and ask for confirmation.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Add a transaction for $35 for coffee, expense from my checking account to pleasures bucket",
+      "expected_output": "The skill should: 1) Identify this as an expense (negative amount), 2) Parse '35' as expense and convert to cents (-3500), 3) Resolve 'checking' account to find account ID (via balde view buckets or balde status), 4) Resolve 'pleasures' bucket to find bucket ID, 5) Run 'balde transaction add -3500 \"Coffee\" <account_id> <bucket_id>', 6) Show confirmation with formatted amount (-$35.00). If account/bucket names are ambiguous, it should ask for clarification.",
+      "files": []
+    }
+  ]
+}
