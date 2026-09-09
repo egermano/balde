@@ -228,6 +228,126 @@ func TestAllocateCmd(t *testing.T) {
 	}
 }
 
+func TestAllocateCmdDeclinesOverAllocationByDefault(t *testing.T) {
+	dir := t.TempDir()
+	os.Chdir(dir)
+	setupInitBudget(t)
+
+	runCommand(t, "account", "add", "checking", "checking", "50000")
+
+	var output bytes.Buffer
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs([]string{"allocate", "200000", "1"})
+	cmd.SetIn(strings.NewReader("\n"))
+	cmd.SetOut(&output)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("allocate: %v", err)
+	}
+
+	want := "Warning: You have 50000 cents available, but trying to allocate 200000 cents.\nThis will result in negative rain. Continue? (y/N) "
+	if output.String() != want {
+		t.Fatalf("output = %q, want %q", output.String(), want)
+	}
+
+	var rainOutput bytes.Buffer
+	rainCmd := cli.NewRootCmd()
+	rainCmd.SetArgs([]string{"rain"})
+	rainCmd.SetOut(&rainOutput)
+	if err := rainCmd.Execute(); err != nil {
+		t.Fatalf("rain: %v", err)
+	}
+	if !strings.Contains(rainOutput.String(), "50000 cents") {
+		t.Fatalf("rain output = %q, want unchanged rain", rainOutput.String())
+	}
+}
+
+func TestAllocateCmdAcceptsOverAllocationConfirmationCaseInsensitively(t *testing.T) {
+	for _, answer := range []string{"y", "YES", "Yes"} {
+		t.Run(answer, func(t *testing.T) {
+			dir := t.TempDir()
+			os.Chdir(dir)
+			setupInitBudget(t)
+			runCommand(t, "account", "add", "checking", "checking", "50000")
+
+			cmd := cli.NewRootCmd()
+			cmd.SetArgs([]string{"allocate", "200000", "1"})
+			cmd.SetIn(strings.NewReader(answer + "\n"))
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("allocate: %v", err)
+			}
+
+			var rainOutput bytes.Buffer
+			rainCmd := cli.NewRootCmd()
+			rainCmd.SetArgs([]string{"rain"})
+			rainCmd.SetOut(&rainOutput)
+			if err := rainCmd.Execute(); err != nil {
+				t.Fatalf("rain: %v", err)
+			}
+			if !strings.Contains(rainOutput.String(), "-150000 cents") {
+				t.Fatalf("rain output = %q, want negative rain", rainOutput.String())
+			}
+		})
+	}
+}
+
+func TestAllocateCmdForceSkipsOverAllocationPrompt(t *testing.T) {
+	dir := t.TempDir()
+	os.Chdir(dir)
+	setupInitBudget(t)
+	runCommand(t, "account", "add", "checking", "checking", "50000")
+
+	var output bytes.Buffer
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs([]string{"allocate", "200000", "1", "--force"})
+	cmd.SetOut(&output)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("allocate: %v", err)
+	}
+	if strings.Contains(output.String(), "Continue?") {
+		t.Fatalf("output = %q, want no prompt", output.String())
+	}
+
+	var rainOutput bytes.Buffer
+	rainCmd := cli.NewRootCmd()
+	rainCmd.SetArgs([]string{"rain"})
+	rainCmd.SetOut(&rainOutput)
+	if err := rainCmd.Execute(); err != nil {
+		t.Fatalf("rain: %v", err)
+	}
+	if !strings.Contains(rainOutput.String(), "-150000 cents") {
+		t.Fatalf("rain output = %q, want forced negative rain", rainOutput.String())
+	}
+}
+
+func TestAllocateCmdRejectsInvalidBucketBeforePrompting(t *testing.T) {
+	dir := t.TempDir()
+	os.Chdir(dir)
+	setupInitBudget(t)
+	runCommand(t, "account", "add", "checking", "checking", "50000")
+
+	var output bytes.Buffer
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs([]string{"allocate", "200000", "missing"})
+	cmd.SilenceUsage = true
+	cmd.SetOut(&output)
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "bucket not found") {
+		t.Fatalf("error = %v, want bucket not found", err)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("output = %q, want no prompt", output.String())
+	}
+}
+
+func runCommand(t *testing.T, args ...string) {
+	t.Helper()
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs(args)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("%v: %v", args, err)
+	}
+}
+
 func TestRainCmd(t *testing.T) {
 	dir := t.TempDir()
 	os.Chdir(dir)
