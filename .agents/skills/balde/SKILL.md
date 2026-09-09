@@ -110,14 +110,14 @@ Parse the JSON and present as:
 ### Recent Transactions (last 10)
 | ID | Date                 | Description  | Amount    | Account | Bucket     |
 |----|----------------------|--------------|-----------|---------|------------|
-| 1  | 2026-05-29 17:17:14  | Rent         | -$1,500.00| 1       | 2          |
+| 1  | 2026-05-29T17:17:14Z | Rent         | -$1,500.00| 1       | 2          |
 ```
 
 **Fill % calculation:**
 - If target == 0: show "-" (no target set)
 - If target > 0: `fill % = (balance / target) * 100`
 
-**Date format:** Show full RFC3339 timestamp (`YYYY-MM-DD HH:MM:SS`) from JSON.
+**Date format:** Preserve the full RFC3339 timestamp from JSON (for example, `2026-05-29T17:17:14Z`). The plain `balde view transactions` command is different: it displays date only as `YYYY-MM-DD`.
 
 **Why show all data:** `status` is the "dashboard" command — users want the full picture in one glance.
 
@@ -162,11 +162,11 @@ Present with formatted amounts (use minus sign for expenses, no color if markdow
 
 | ID | Date                 | Description    | Amount    | Account | Bucket     |
 |----|----------------------|----------------|-----------|---------|------------|
-| 1  | 2026-05-29 17:17:14  | Monthly salary | +$5,000.00| 1       | (none)     |
-| 2  | 2026-05-28 10:30:00  | Rent           | -$1,500.00| 1       | 2          |
+| 1  | 2026-05-29T17:17:14Z | Monthly salary | +$5,000.00| 1       | (none)     |
+| 2  | 2026-05-28T10:30:00Z | Rent           | -$1,500.00| 1       | 2          |
 ```
 
-Note: Expenses are negative — format with a minus sign. If BucketID is empty string, show "(none)".
+Note: Preserve JSON dates as RFC3339 timestamps. Expenses are negative — format with a minus sign. If BucketID is empty string, show "(none)".
 
 **Important:** Transaction IDs in the CLI response may be incomplete (`id=` without value). Don't rely on the CLI output for the ID; get it from the JSON response.
 
