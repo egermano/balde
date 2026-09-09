@@ -15,6 +15,22 @@ type BudgetStatus struct {
 	Rain         int64              `json:"rain"`
 }
 
+func (s BudgetStatus) MarshalJSON() ([]byte, error) {
+	type statusJSON BudgetStatus
+
+	if s.Accounts == nil {
+		s.Accounts = []core.Account{}
+	}
+	if s.Buckets == nil {
+		s.Buckets = []core.Bucket{}
+	}
+	if s.Transactions == nil {
+		s.Transactions = []core.Transaction{}
+	}
+
+	return json.Marshal(statusJSON(s))
+}
+
 func newStatusCmd() *cobra.Command {
 	var asJSON bool
 
