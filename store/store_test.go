@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,93 @@ import (
 	"github.com/egermano/balde/core"
 	"github.com/egermano/balde/store"
 )
+
+func TestSQLiteStore_EnforcesNormalizedBucketNameUniquenessPerBudget(t *testing.T) {
+	s, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	if err := s.CreateBucket(core.Bucket{Name: "Fixed Costs", BudgetID: "b1"}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "  fixed costs  ", BudgetID: "b1"}); err == nil {
+		t.Fatal("expected duplicate bucket error")
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "   ", BudgetID: "b1"}); err == nil {
+		t.Fatal("expected empty bucket name error")
+	}
+	if err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b2"}); err != nil {
+		t.Fatalf("same name in another budget: %v", err)
+	}
+
+	buckets, err := s.ListBuckets()
+	if err != nil {
+		t.Fatalf("list buckets: %v", err)
+	}
+	if buckets[1].Name != "fixed costs" {
+		t.Fatalf("expected trimmed persisted name, got %q", buckets[1].Name)
+	}
+}
+
+func TestSQLiteStore_UpdateBucketEnforcesNormalizedNameUniqueness(t *testing.T) {
+	s, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	if err := s.CreateBucket(core.Bucket{Name: "Housing", BudgetID: "b1"}); err != nil {
+		t.Fatalf("create housing: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "Food", BudgetID: "b1"}); err != nil {
+		t.Fatalf("create food: %v", err)
+	}
+	buckets, err := s.ListBuckets()
+	if err != nil {
+		t.Fatalf("list buckets: %v", err)
+	}
+	buckets[1].Name = " housing "
+	if err := s.UpdateBucket(buckets[1]); err == nil {
+		t.Fatal("expected duplicate bucket update error")
+	}
+}
+
+func TestSQLiteStore_MigrationRejectsLegacyDuplicateBucketsWithoutDataLoss(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open legacy db: %v", err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE buckets (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			target INTEGER NOT NULL DEFAULT 0,
+			balance INTEGER NOT NULL DEFAULT 0,
+			budget_id TEXT NOT NULL
+		);
+		INSERT INTO buckets (name, budget_id) VALUES ('Fixed Costs', 'b1'), (' fixed costs ', 'b1');
+	`)
+	if err != nil {
+		t.Fatalf("seed legacy db: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy db: %v", err)
+	}
+
+	if _, err := store.NewSQLiteStore(dbPath); err == nil {
+		t.Fatal("expected migration to reject duplicate buckets")
+	}
+
+	db, err = sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("reopen legacy db: %v", err)
+	}
+	defer db.Close()
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM buckets").Scan(&count); err != nil {
+		t.Fatalf("count legacy buckets: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected both legacy buckets preserved, got %d", count)
+	}
+}
 
 func setupTestDB(t *testing.T) (*store.SQLiteStore, func()) {
 	t.Helper()

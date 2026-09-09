@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -32,12 +33,21 @@ func (b *Budget) AddAccount(name string, accountType AccountType, initialBalance
 }
 
 func (b *Budget) AddBucket(name string, target int64) (Bucket, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return Bucket{}, fmt.Errorf("add bucket: name is required")
+	}
 	buckets, err := b.store.ListBuckets()
 	if err != nil {
 		return Bucket{}, fmt.Errorf("add bucket: %w", err)
 	}
 	if len(buckets) >= 8 {
 		return Bucket{}, fmt.Errorf("add bucket: maximum of 8 buckets exceeded")
+	}
+	for _, bucket := range buckets {
+		if bucket.BudgetID == b.ID && strings.EqualFold(strings.TrimSpace(bucket.Name), name) {
+			return Bucket{}, fmt.Errorf("add bucket: bucket %q already exists", name)
+		}
 	}
 
 	bk := Bucket{

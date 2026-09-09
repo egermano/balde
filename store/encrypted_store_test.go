@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,68 @@ import (
 	"github.com/egermano/balde/core"
 	"github.com/egermano/balde/store"
 )
+
+func TestEncryptedSQLiteStore_EnforcesNormalizedBucketNameUniquenessPerBudget(t *testing.T) {
+	encPath := filepath.Join(t.TempDir(), "test.enc")
+	s, err := store.NewEncryptedSQLiteStore(encPath, "test-password")
+	if err != nil {
+		t.Fatalf("open encrypted store: %v", err)
+	}
+	defer s.Close()
+
+	if err := s.CreateBucket(core.Bucket{Name: "Fixed Costs", BudgetID: "b1"}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b1"}); err == nil {
+		t.Fatal("expected duplicate bucket error")
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "   ", BudgetID: "b1"}); err == nil {
+		t.Fatal("expected empty bucket name error")
+	}
+	if err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b2"}); err != nil {
+		t.Fatalf("same name in another budget: %v", err)
+	}
+
+	buckets, err := s.ListBuckets()
+	if err != nil {
+		t.Fatalf("list buckets: %v", err)
+	}
+	if buckets[1].Name != "fixed costs" {
+		t.Fatalf("expected trimmed persisted name, got %q", buckets[1].Name)
+	}
+}
+
+func TestEncryptedSQLiteStore_MigrationRejectsLegacyDuplicateBucketsWithoutDataLoss(t *testing.T) {
+	encPath := filepath.Join(t.TempDir(), "legacy.enc")
+	password := "test-password"
+	dump := []byte(`
+		CREATE TABLE buckets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, target INTEGER NOT NULL DEFAULT 0, balance INTEGER NOT NULL DEFAULT 0, budget_id TEXT NOT NULL);
+		INSERT INTO buckets VALUES (1, 'Fixed Costs', 0, 0, 'b1');
+		INSERT INTO buckets VALUES (2, ' fixed costs ', 0, 0, 'b1');
+	`)
+	ciphertext, salt, nonce, err := store.Encrypt(dump, password)
+	if err != nil {
+		t.Fatalf("encrypt legacy dump: %v", err)
+	}
+	serialized, err := store.SerializeEncrypted(ciphertext, salt, nonce)
+	if err != nil {
+		t.Fatalf("serialize legacy dump: %v", err)
+	}
+	if err := os.WriteFile(encPath, serialized, 0600); err != nil {
+		t.Fatalf("write legacy encrypted db: %v", err)
+	}
+
+	if _, err := store.NewEncryptedSQLiteStore(encPath, password); err == nil {
+		t.Fatal("expected migration to reject duplicate buckets")
+	}
+	after, err := os.ReadFile(encPath)
+	if err != nil {
+		t.Fatalf("read legacy encrypted db: %v", err)
+	}
+	if !bytes.Equal(after, serialized) {
+		t.Fatal("migration failure changed legacy encrypted data")
+	}
+}
 
 func TestEncryptedSQLiteStore_CreateAndGetAccount(t *testing.T) {
 	dir := t.TempDir()

@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/egermano/balde/core"
@@ -48,32 +49,7 @@ func (s *SQLiteStore) Close() error {
 }
 
 func (s *SQLiteStore) migrate() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS accounts (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		type TEXT NOT NULL,
-		balance INTEGER NOT NULL DEFAULT 0
-	);
-	CREATE TABLE IF NOT EXISTS buckets (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		target INTEGER NOT NULL DEFAULT 0,
-		balance INTEGER NOT NULL DEFAULT 0,
-		budget_id TEXT NOT NULL
-	);
-	CREATE TABLE IF NOT EXISTS transactions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		amount INTEGER NOT NULL,
-		description TEXT NOT NULL DEFAULT '',
-		date TEXT NOT NULL,
-		account_id TEXT NOT NULL,
-		bucket_id TEXT NOT NULL DEFAULT '',
-		categorized INTEGER NOT NULL DEFAULT 0
-	);
-	`
-	_, err := s.db.Exec(schema)
-	return err
+	return migrate(s.db)
 }
 
 func (s *SQLiteStore) CreateAccount(a core.Account) error {
@@ -124,7 +100,7 @@ func (s *SQLiteStore) UpdateAccount(a core.Account) error {
 func (s *SQLiteStore) CreateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
 		"INSERT INTO buckets (name, target, balance, budget_id) VALUES (?, ?, ?, ?)",
-		b.Name, b.Target, b.Balance, b.BudgetID,
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID,
 	)
 	return err
 }
@@ -161,7 +137,7 @@ func (s *SQLiteStore) ListBuckets() ([]core.Bucket, error) {
 func (s *SQLiteStore) UpdateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
 		"UPDATE buckets SET name = ?, target = ?, balance = ?, budget_id = ? WHERE id = ?",
-		b.Name, b.Target, b.Balance, b.BudgetID, b.ID,
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.ID,
 	)
 	return err
 }
