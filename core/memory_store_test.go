@@ -112,9 +112,23 @@ func (m *MemoryStore) DeleteBucket(id string) error {
 func (m *MemoryStore) CreateTransaction(t core.Transaction) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	account, ok := m.accounts[t.AccountID]
+	if !ok {
+		return fmt.Errorf("account not found: %s", t.AccountID)
+	}
+	account.Balance += t.Amount
+	if t.Categorized {
+		bucket, ok := m.buckets[t.BucketID]
+		if !ok {
+			return fmt.Errorf("bucket not found: %s", t.BucketID)
+		}
+		bucket.Balance += t.Amount
+		m.buckets[t.BucketID] = bucket
+	}
 	if t.ID == "" {
 		t.ID = fmt.Sprintf("txn-%d", len(m.transactions)+1)
 	}
+	m.accounts[t.AccountID] = account
 	m.transactions[t.ID] = t
 	return nil
 }
@@ -139,13 +153,28 @@ func (m *MemoryStore) ListTransactions() ([]core.Transaction, error) {
 	return result, nil
 }
 
-func (m *MemoryStore) UpdateTransaction(t core.Transaction) error {
+func (m *MemoryStore) DeleteTransaction(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.transactions[t.ID]; !ok {
-		return fmt.Errorf("transaction not found: %s", t.ID)
+	t, ok := m.transactions[id]
+	if !ok {
+		return fmt.Errorf("transaction not found: %s", id)
 	}
-	m.transactions[t.ID] = t
+	account, ok := m.accounts[t.AccountID]
+	if !ok {
+		return fmt.Errorf("account not found: %s", t.AccountID)
+	}
+	account.Balance -= t.Amount
+	if t.Categorized {
+		bucket, ok := m.buckets[t.BucketID]
+		if !ok {
+			return fmt.Errorf("bucket not found: %s", t.BucketID)
+		}
+		bucket.Balance -= t.Amount
+		m.buckets[t.BucketID] = bucket
+	}
+	m.accounts[t.AccountID] = account
+	delete(m.transactions, id)
 	return nil
 }
 

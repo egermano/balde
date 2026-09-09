@@ -15,5 +15,5 @@ type Store interface {
 	CreateTransaction(t Transaction) error
 	GetTransaction(id string) (Transaction, error)
 	ListTransactions() ([]Transaction, error)
-	UpdateTransaction(t Transaction) error
+	DeleteTransaction(id string) error
 }

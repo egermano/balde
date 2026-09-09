@@ -46,6 +46,65 @@ func TestEncryptedSQLiteStore_CreateAndGetAccount(t *testing.T) {
 	}
 }
 
+func TestEncryptedSQLiteStore_CreateTransaction_AtomicallyAppliesBalances(t *testing.T) {
+	dir := t.TempDir()
+	s, err := store.NewEncryptedSQLiteStore(filepath.Join(dir, "test.enc"), "test-password")
+	if err != nil {
+		t.Fatalf("open encrypted store: %v", err)
+	}
+	defer s.Close()
+
+	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
+	if err := s.CreateTransaction(core.Transaction{
+		Amount: -2500, Description: "groceries", AccountID: "1", BucketID: "1", Categorized: true,
+	}); err != nil {
+		t.Fatalf("create transaction: %v", err)
+	}
+
+	account, _ := s.GetAccount("1")
+	bucket, _ := s.GetBucket("1")
+	if account.Balance != 7500 {
+		t.Errorf("expected account balance 7500, got %d", account.Balance)
+	}
+	if bucket.Balance != -2500 {
+		t.Errorf("expected bucket balance -2500, got %d", bucket.Balance)
+	}
+}
+
+func TestEncryptedSQLiteStore_DeleteTransaction_AtomicallyReversesBalances(t *testing.T) {
+	dir := t.TempDir()
+	s, err := store.NewEncryptedSQLiteStore(filepath.Join(dir, "test.enc"), "test-password")
+	if err != nil {
+		t.Fatalf("open encrypted store: %v", err)
+	}
+	defer s.Close()
+	s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000})
+	s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"})
+	if err := s.CreateTransaction(core.Transaction{
+		Amount: -2500, Description: "groceries", AccountID: "1", BucketID: "1", Categorized: true,
+	}); err != nil {
+		t.Fatalf("create transaction: %v", err)
+	}
+
+	if err := s.DeleteTransaction("1"); err != nil {
+		t.Fatalf("delete transaction: %v", err)
+	}
+
+	account, _ := s.GetAccount("1")
+	bucket, _ := s.GetBucket("1")
+	if account.Balance != 10000 {
+		t.Errorf("expected account balance 10000, got %d", account.Balance)
+	}
+	if bucket.Balance != 0 {
+		t.Errorf("expected bucket balance 0, got %d", bucket.Balance)
+	}
+}
+
 func TestEncryptedSQLiteStore_PersistsEncrypted(t *testing.T) {
 	dir := t.TempDir()
 	encPath := filepath.Join(dir, "test.enc")
