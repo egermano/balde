@@ -162,3 +162,66 @@ func TestInitCmd_NonInteractive_MissingPassword(t *testing.T) {
 		t.Fatalf("expected %q, got: %v", expectedError, err)
 	}
 }
+
+func TestInitCmd_NonInteractive_PasswordFlag(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("BALDE_ENCRYPTION", "")
+	t.Setenv("BALDE_PASSWORD", "")
+
+	cmd := NewRootCmd()
+	cmd.SetArgs([]string{"init", "--non-interactive", "--password", "test123"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init command failed: %v", err)
+	}
+
+	config, err := store.ReadConfig("balde.db")
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+	if !config.Encrypted {
+		t.Fatal("expected --password to enable encryption")
+	}
+}
+
+func TestInitCmd_EncryptionEnvVarWithoutNonInteractiveFlag(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("BALDE_ENCRYPTION", "true")
+	t.Setenv("BALDE_PASSWORD", "test123")
+
+	cmd := NewRootCmd()
+	cmd.SetArgs([]string{"init"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init command failed: %v", err)
+	}
+
+	config, err := store.ReadConfig("balde.db")
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+	if !config.Encrypted {
+		t.Fatal("expected BALDE_ENCRYPTION=true to enable encryption")
+	}
+}
+
+func TestInitCmd_NonInteractiveDefaultsToNoEncryption(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("BALDE_ENCRYPTION", "")
+	t.Setenv("BALDE_PASSWORD", "")
+
+	cmd := NewRootCmd()
+	cmd.SetArgs([]string{"init", "--non-interactive"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init command failed: %v", err)
+	}
+
+	config, err := store.ReadConfig("balde.db")
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+	if config.Encrypted {
+		t.Fatal("expected non-interactive init to default to no encryption")
+	}
+}

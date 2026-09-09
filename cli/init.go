@@ -82,29 +82,21 @@ func newInitCmd() *cobra.Command {
 
 			encrypted := false
 
-			// Handle non-interactive mode
-			if nonInteractive {
-				// --no-encryption flag takes precedence over environment variables
-				if noEncryption {
-					encrypted = false
-				} else {
-					encryptionEnv := os.Getenv("BALDE_ENCRYPTION")
-					if encryptionEnv == "true" {
-						// Check for password in environment variable
-						envPassword := os.Getenv("BALDE_PASSWORD")
-						if envPassword == "" {
-							return fmt.Errorf("password required when encryption enabled (use --password flag or BALDE_PASSWORD env var)")
-						}
-						encrypted = true
-						password = envPassword
-					} else if encryptionEnv == "false" {
-						encrypted = false
-					} else {
-						return fmt.Errorf("BALDE_ENCRYPTION must be 'true' or 'false' in non-interactive mode")
-					}
-				}
+			encryptionEnv := os.Getenv("BALDE_ENCRYPTION")
+			if noEncryption {
+				encrypted = false
 			} else if password != "" {
 				encrypted = true
+			} else if encryptionEnv == "true" {
+				password = os.Getenv("BALDE_PASSWORD")
+				if password == "" {
+					return fmt.Errorf("password required when encryption enabled (use --password flag or BALDE_PASSWORD env var)")
+				}
+				encrypted = true
+			} else if encryptionEnv == "false" || (nonInteractive && encryptionEnv == "") {
+				encrypted = false
+			} else if encryptionEnv != "" {
+				return fmt.Errorf("BALDE_ENCRYPTION must be 'true' or 'false'")
 			} else {
 				fmt.Print("Enable encryption? (y/N): ")
 				var response string
@@ -194,7 +186,7 @@ func newInitCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
 	cmd.Flags().StringVarP(&dir, "dir", "d", "", "Directory to initialize budget in")
-	cmd.Flags().BoolVar(&noEncryption, "no-encryption", false, "Disable encryption (useful for automation")
+	cmd.Flags().BoolVar(&noEncryption, "no-encryption", false, "Disable encryption (useful for automation)")
 	cmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "Run in non-interactive mode (reads from BALDE_ENCRYPTION env var)")
 
 	return cmd
