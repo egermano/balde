@@ -20,7 +20,7 @@ func newAllocateCmd() *cobra.Command {
 			}
 			bucketID := args[1]
 
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}
@@ -42,7 +42,7 @@ func newRainCmd() *cobra.Command {
 		Use:  "rain",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

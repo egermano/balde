@@ -5,11 +5,19 @@ import (
 	"os"
 
 	"github.com/egermano/balde/store"
+	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
-func openBudgetDB() (store.Store, error) {
+func openBudgetDB(cmd *cobra.Command) (store.Store, error) {
+	dir, err := cmd.Flags().GetString("dir")
+	if err != nil {
+		return nil, err
+	}
 	dbPath := "balde.db"
+	if dir != "" {
+		dbPath = dir + string(os.PathSeparator) + dbPath
+	}
 
 	config, err := store.ReadConfig(dbPath)
 	if err != nil {

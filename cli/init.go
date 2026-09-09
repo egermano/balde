@@ -28,11 +28,13 @@ func DefaultConfig() Config {
 }
 
 func NewRootCmd() *cobra.Command {
+	var dir string
 	root := &cobra.Command{
 		Use:     "balde",
 		Short:   "Budget manager CLI using the bucket method",
 		Version: fmt.Sprintf("%s (%s, %s)", version.Version, version.Commit, version.BuildDate),
 	}
+	root.PersistentFlags().StringVarP(&dir, "dir", "d", "", "Budget directory")
 
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newUnlockCmd())
@@ -50,7 +52,6 @@ func NewRootCmd() *cobra.Command {
 
 func newInitCmd() *cobra.Command {
 	var password string
-	var dir string
 	var noEncryption bool
 	var nonInteractive bool
 
@@ -58,6 +59,14 @@ func newInitCmd() *cobra.Command {
 		Use:   "init",
 		Short: "Initialize a new budget",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			dir := ""
+			var err error
+			if cmd.Flags().Lookup("dir") != nil {
+				dir, err = cmd.Flags().GetString("dir")
+				if err != nil {
+					return err
+				}
+			}
 			origDir, _ := os.Getwd()
 			defer os.Chdir(origDir)
 
@@ -78,8 +87,6 @@ func newInitCmd() *cobra.Command {
 			}
 
 			var s store.Store
-			var err error
-
 			encrypted := false
 
 			encryptionEnv := os.Getenv("BALDE_ENCRYPTION")
@@ -185,10 +192,8 @@ func newInitCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption")
-	cmd.Flags().StringVarP(&dir, "dir", "d", "", "Directory to initialize budget in")
 	cmd.Flags().BoolVar(&noEncryption, "no-encryption", false, "Disable encryption (useful for automation)")
 	cmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "Run in non-interactive mode (reads from BALDE_ENCRYPTION env var)")
-
 	return cmd
 }
 

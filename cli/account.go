@@ -31,7 +31,7 @@ func newAccountAddCmd() *cobra.Command {
 				return fmt.Errorf("invalid balance: %s", args[2])
 			}
 
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}
