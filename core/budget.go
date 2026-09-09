@@ -68,13 +68,7 @@ func (b *Budget) AddTransaction(amount int64, description string, date time.Time
 	if err := b.store.CreateTransaction(t); err != nil {
 		return Transaction{}, fmt.Errorf("add transaction: %w", err)
 	}
-
-	// Retrieve the actual transaction with the assigned ID
-	transactions, err := b.store.ListTransactions()
-	if err != nil {
-		return Transaction{}, fmt.Errorf("add transaction: %w", err)
-	}
-	return transactions[len(transactions)-1], nil
+	return t, nil
 }
 
 func (b *Budget) Allocate(bucketID string, amount int64) error {
@@ -112,15 +106,4 @@ func (b *Budget) Rain() (int64, error) {
 	}
 
 	return totalAccounts - totalBuckets, nil
-}
-
-func (b *Budget) CalculateFillPercentage(bucket Bucket) float64 {
-	// Handle zero target to avoid division by zero
-	if bucket.Target == 0 {
-		return 0.0
-	}
-
-	// Calculate fill percentage: (balance / target) * 100
-	percent := float64(bucket.Balance) / float64(bucket.Target) * 100
-	return percent
 }

@@ -148,8 +148,3 @@ func (m *MemoryStore) UpdateTransaction(t core.Transaction) error {
 	m.transactions[t.ID] = t
 	return nil
 }
-
-func (m *MemoryStore) Close() error {
-	// In-memory store doesn't need to close anything
-	return nil
-}
