@@ -27,28 +27,30 @@ Download the latest release from [GitHub Releases](https://github.com/egermano/b
 #### Linux (amd64)
 
 ```sh
-curl -sL https://github.com/egermano/balde/releases/latest/download/balde_$(curl -s https://api.github.com/repos/egermano/balde/releases/latest | grep '"tag_name"' | head -1 | cut -d'"' -f4)_linux_amd64.tar.gz | tar xz
+TAG=$(curl -fsSL https://api.github.com/repos/egermano/balde/releases | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | sed -n '1p')
+curl -fsSL "https://github.com/egermano/balde/releases/download/${TAG}/balde_Linux_x86_64.tar.gz" | tar xz
 sudo mv balde /usr/local/bin/
 ```
 
 #### macOS (Apple Silicon/Intel)
 
 ```sh
+TAG=$(curl -fsSL https://api.github.com/repos/egermano/balde/releases | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | sed -n '1p')
 ARCH=$(uname -m)
 if [ "$ARCH" = "arm64" ]; then
   ARCH="arm64"
 else
-  ARCH="amd64"
+  ARCH="x86_64"
 fi
-curl -sL https://github.com/egermano/balde/releases/latest/download/balde_$(curl -s https://api.github.com/repos/egermano/balde/releases/latest | grep '"tag_name"' | head -1 | cut -d'"' -f4)_darwin_${ARCH}.tar.gz | tar xz
+curl -fsSL "https://github.com/egermano/balde/releases/download/${TAG}/balde_Darwin_${ARCH}.tar.gz" | tar xz
 sudo mv balde /usr/local/bin/
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
-$version = (Invoke-RestMethod https://api.github.com/repos/egermano/balde/releases/latest).tag_name
-Invoke-WebRequest -Uri "https://github.com/egermano/balde/releases/download/${version}/balde_${version}_windows_amd64.zip" -OutFile balde.zip
+$version = (Invoke-RestMethod https://api.github.com/repos/egermano/balde/releases)[0].tag_name
+Invoke-WebRequest -Uri "https://github.com/egermano/balde/releases/download/${version}/balde_Windows_x86_64.zip" -OutFile balde.zip -ErrorAction Stop
 Expand-Archive balde.zip -DestinationPath .
 Move-Item balde.exe $env:USERPROFILE\bin\
 ```
