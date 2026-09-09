@@ -10,13 +10,9 @@ import (
 )
 
 func openBudgetDB(cmd *cobra.Command) (store.Store, error) {
-	dir, err := cmd.Flags().GetString("dir")
+	dbPath, err := budgetDBPath(cmd)
 	if err != nil {
 		return nil, err
-	}
-	dbPath := "balde.db"
-	if dir != "" {
-		dbPath = dir + string(os.PathSeparator) + dbPath
 	}
 
 	config, err := store.ReadConfig(dbPath)
@@ -48,4 +44,16 @@ func openBudgetDB(cmd *cobra.Command) (store.Store, error) {
 	fmt.Println()
 
 	return store.OpenStore(dbPath, password, "", config)
+}
+
+func budgetDBPath(cmd *cobra.Command) (string, error) {
+	dir, err := cmd.Flags().GetString("dir")
+	if err != nil {
+		return "", err
+	}
+	dbPath := "balde.db"
+	if dir != "" {
+		dbPath = dir + string(os.PathSeparator) + dbPath
+	}
+	return dbPath, nil
 }
