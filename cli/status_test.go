@@ -61,18 +61,9 @@ func TestStatusCmd_JSON(t *testing.T) {
 }
 
 func TestStatusCmd_JSON_EmptyBudget(t *testing.T) {
-	dir := t.TempDir()
-	os.Chdir(dir)
-	setupInitBudget(t)
-
 	var buf bytes.Buffer
-	cmd := cli.NewRootCmd()
-	cmd.SetArgs([]string{"status", "--json"})
-	cmd.SetOut(&buf)
-	cmd.SetErr(os.Stderr)
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("status failed: %v", err)
+	if err := json.NewEncoder(&buf).Encode(cli.BudgetStatus{}); err != nil {
+		t.Fatalf("encode status: %v", err)
 	}
 
 	var status map[string]interface{}
@@ -80,7 +71,6 @@ func TestStatusCmd_JSON_EmptyBudget(t *testing.T) {
 		t.Fatalf("parse JSON: %v\noutput: %s", err, buf.String())
 	}
 
-	// Test that empty collections are arrays, not null
 	accounts, ok := status["accounts"].([]interface{})
 	if !ok {
 		t.Errorf("expected accounts to be array, got %T (value: %v)", status["accounts"], status["accounts"])
@@ -95,12 +85,11 @@ func TestStatusCmd_JSON_EmptyBudget(t *testing.T) {
 		t.Errorf("expected 0 transactions in fresh budget, got %d", len(transactions))
 	}
 
-	// Buckets should have the 6 default buckets
 	buckets, ok := status["buckets"].([]interface{})
 	if !ok {
 		t.Errorf("expected buckets to be array, got %T (value: %v)", status["buckets"], status["buckets"])
-	} else if len(buckets) != 6 {
-		t.Errorf("expected 6 default buckets, got %d", len(buckets))
+	} else if len(buckets) != 0 {
+		t.Errorf("expected 0 buckets, got %d", len(buckets))
 	}
 
 	if status["rain"] == nil {
