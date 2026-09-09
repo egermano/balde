@@ -630,8 +630,8 @@ balde view transactions [--json]
 
 **Plain text output** (tab-separated):
 ```
-1	-50000	Coffee	2026-05-29T00:00:00Z
-2	5000000	Salary	2026-05-28T00:00:00Z
+1	-50000	Coffee	2026-05-29
+2	5000000	Salary	2026-05-28
 ```
 
 **JSON output:**
@@ -641,7 +641,7 @@ balde view transactions [--json]
     "ID": "1",
     "Amount": -50000,
     "Description": "Coffee",
-    "Date": "2026-05-29T00:00:00Z",
+    "Date": "2026-05-29T17:17:14Z",
     "AccountID": "1",
     "BucketID": "4",
     "Categorized": false
@@ -650,7 +650,7 @@ balde view transactions [--json]
     "ID": "2",
     "Amount": 5000000,
     "Description": "Salary",
-    "Date": "2026-05-28T00:00:00Z",
+    "Date": "2026-05-28T10:30:00Z",
     "AccountID": "1",
     "BucketID": "1",
     "Categorized": false
@@ -735,7 +735,7 @@ Rain: 500000 cents
       "ID": "1",
       "Amount": -50000,
       "Description": "Coffee",
-      "Date": "2026-05-29T00:00:00Z",
+      "Date": "2026-05-29T17:17:14Z",
       "AccountID": "1",
       "BucketID": "4",
       "Categorized": false
@@ -857,8 +857,8 @@ When converting bucket targets between cycles:
 
 ### Date Format
 
-- **RFC3339 in JSON:** `2026-05-29T00:00:00Z`
-- **CLI output:** ISO 8601 (`YYYY-MM-DD`)
+- **JSON output:** Full RFC3339 timestamp, for example `2026-05-29T17:17:14Z`
+- **Plain `balde view transactions` output:** Date only (`YYYY-MM-DD`), for example `2026-05-29`
 - **Note:** `transaction add` always uses `time.Now()` — custom dates not supported
 
 ### ID Format
