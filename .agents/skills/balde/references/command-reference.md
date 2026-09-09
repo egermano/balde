@@ -295,9 +295,11 @@ balde account add <name> <type> <balance>
 **Creates:** New account in database
 
 **Plain text output:**
-```
+```text
 Account created: My Checking (checking) balance=5000000 id=1
 ```
+
+`balance=5000000` is the raw integer-cent value supplied to the command. Parse the created account ID from the value after `id=`. For user-facing output, format the balance using the budget's currency settings; for example, present `5000000` cents as `$50,000.00` with the default settings.
 
 **JSON output:** None
 
@@ -306,7 +308,7 @@ Account created: My Checking (checking) balance=5000000 id=1
 **Add checking account:**
 ```bash
 balde account add "My Checking" checking 5000000
-# Balance: $5,000.00 (5,000,000 cents)
+# Balance: $50,000.00 (5,000,000 cents)
 ```
 
 **Add savings account:**
