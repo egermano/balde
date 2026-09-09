@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -179,6 +180,67 @@ func TestBudget_DeleteTransaction_ReversesCategorizedBalances(t *testing.T) {
 	}
 	if _, err := store.GetTransaction(tx.ID); err == nil {
 		t.Error("expected transaction to be deleted")
+	}
+}
+
+func TestBudget_DeleteBucketArchivesHistoryAndExcludesBalanceFromRain(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+	account, _ := budget.AddAccount("checking", core.AccountChecking, 10000)
+	bucket, _ := budget.AddBucket("food", 5000)
+	tx, err := budget.AddTransaction(-2500, "groceries", time.Now(), account.ID, bucket.ID)
+	if err != nil {
+		t.Fatalf("add transaction: %v", err)
+	}
+
+	deleted, linked, err := budget.DeleteBucket(bucket.ID)
+	if err != nil {
+		t.Fatalf("delete bucket: %v", err)
+	}
+	if deleted.ID != bucket.ID || linked != 1 {
+		t.Fatalf("unexpected deletion result: bucket=%+v linked=%d", deleted, linked)
+	}
+	if buckets, _ := store.ListBuckets(); len(buckets) != 0 {
+		t.Fatalf("expected archived bucket excluded from list, got %d", len(buckets))
+	}
+	archived, err := store.GetBucket(bucket.ID)
+	if err != nil || !archived.Archived {
+		t.Fatalf("expected archived bucket to remain retrievable: %+v, %v", archived, err)
+	}
+	storedTx, err := store.GetTransaction(tx.ID)
+	if err != nil || storedTx.BucketID != bucket.ID {
+		t.Fatalf("expected transaction link preserved: %+v, %v", storedTx, err)
+	}
+	rain, err := budget.Rain()
+	if err != nil || rain != 7500 {
+		t.Fatalf("expected archived balance excluded from rain, got %d, %v", rain, err)
+	}
+	if err := budget.Allocate(bucket.ID, 100); err == nil {
+		t.Fatal("expected allocation to archived bucket to fail")
+	}
+	if _, err := budget.AddTransaction(-100, "snack", time.Now(), account.ID, bucket.ID); err == nil {
+		t.Fatal("expected transaction against archived bucket to fail")
+	}
+}
+
+func TestBudget_DeleteBucketFreesActiveSlotAndName(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+	var first core.Bucket
+	for i := 0; i < 8; i++ {
+		bucket, err := budget.AddBucket(fmt.Sprintf("bucket %d", i), 0)
+		if err != nil {
+			t.Fatalf("add bucket %d: %v", i, err)
+		}
+		if i == 0 {
+			first = bucket
+		}
+	}
+	if _, _, err := budget.DeleteBucket(first.ID); err != nil {
+		t.Fatalf("archive bucket: %v", err)
+	}
+	if _, err := budget.AddBucket(" bucket 0 ", 0); err != nil {
+		t.Fatalf("expected archived slot and name reusable: %v", err)
 	}
 }
 

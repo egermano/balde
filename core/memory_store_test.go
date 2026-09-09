@@ -87,7 +87,9 @@ func (m *MemoryStore) ListBuckets() ([]core.Bucket, error) {
 	defer m.mu.RUnlock()
 	result := make([]core.Bucket, 0, len(m.buckets))
 	for _, b := range m.buckets {
-		result = append(result, b)
+		if !b.Archived {
+			result = append(result, b)
+		}
 	}
 	return result, nil
 }
@@ -105,7 +107,12 @@ func (m *MemoryStore) UpdateBucket(b core.Bucket) error {
 func (m *MemoryStore) DeleteBucket(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.buckets, id)
+	bucket, ok := m.buckets[id]
+	if !ok || bucket.Archived {
+		return fmt.Errorf("bucket not found: %s", id)
+	}
+	bucket.Archived = true
+	m.buckets[id] = bucket
 	return nil
 }
 
@@ -121,6 +128,9 @@ func (m *MemoryStore) CreateTransaction(t core.Transaction) error {
 		bucket, ok := m.buckets[t.BucketID]
 		if !ok {
 			return fmt.Errorf("bucket not found: %s", t.BucketID)
+		}
+		if bucket.Archived {
+			return fmt.Errorf("bucket archived: %s", t.BucketID)
 		}
 		bucket.Balance += t.Amount
 		m.buckets[t.BucketID] = bucket

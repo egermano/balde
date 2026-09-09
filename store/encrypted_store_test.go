@@ -72,6 +72,81 @@ func TestEncryptedSQLiteStore_MigrationRejectsLegacyDuplicateBucketsWithoutDataL
 	}
 }
 
+func TestEncryptedSQLiteStore_ArchivesBucketAcrossReopen(t *testing.T) {
+	encPath := filepath.Join(t.TempDir(), "test.enc")
+	password := "test-password"
+	s, err := store.NewEncryptedSQLiteStore(encPath, password)
+	if err != nil {
+		t.Fatalf("open encrypted store: %v", err)
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "Goals", BudgetID: "b1"}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
+	if err := s.DeleteBucket("1"); err != nil {
+		t.Fatalf("archive bucket: %v", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatalf("close encrypted store: %v", err)
+	}
+
+	s, err = store.NewEncryptedSQLiteStore(encPath, password)
+	if err != nil {
+		t.Fatalf("reopen encrypted store: %v", err)
+	}
+	defer s.Close()
+	if buckets, err := s.ListBuckets(); err != nil || len(buckets) != 0 {
+		t.Fatalf("expected archived bucket excluded after reopen: %+v, %v", buckets, err)
+	}
+	bucket, err := s.GetBucket("1")
+	if err != nil || !bucket.Archived {
+		t.Fatalf("expected archive marker persisted: %+v, %v", bucket, err)
+	}
+}
+
+func TestEncryptedSQLiteStore_ArchivesBucketWithoutDeletingTransaction(t *testing.T) {
+	s, err := store.NewEncryptedSQLiteStore(filepath.Join(t.TempDir(), "test.enc"), "test-password")
+	if err != nil {
+		t.Fatalf("open encrypted store: %v", err)
+	}
+	defer s.Close()
+	s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking})
+	s.CreateBucket(core.Bucket{Name: "food", BudgetID: "b1"})
+	if err := s.CreateTransaction(core.Transaction{Amount: -100, Description: "snack", AccountID: "1", BucketID: "1", Categorized: true}); err != nil {
+		t.Fatalf("create transaction: %v", err)
+	}
+	if err := s.DeleteBucket("1"); err != nil {
+		t.Fatalf("archive bucket: %v", err)
+	}
+	tx, err := s.GetTransaction("1")
+	if err != nil || tx.BucketID != "1" {
+		t.Fatalf("expected transaction link preserved: %+v, %v", tx, err)
+	}
+}
+
+func TestEncryptedSQLiteStore_MigratesLegacyBucketsAsActive(t *testing.T) {
+	encPath := filepath.Join(t.TempDir(), "legacy.enc")
+	password := "test-password"
+	dump := []byte(`
+		CREATE TABLE buckets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, target INTEGER NOT NULL DEFAULT 0, balance INTEGER NOT NULL DEFAULT 0, budget_id TEXT NOT NULL);
+		INSERT INTO buckets VALUES (1, 'Goals', 0, 0, 'b1');
+	`)
+	ciphertext, salt, nonce, _ := store.Encrypt(dump, password)
+	serialized, _ := store.SerializeEncrypted(ciphertext, salt, nonce)
+	if err := os.WriteFile(encPath, serialized, 0600); err != nil {
+		t.Fatalf("write legacy encrypted db: %v", err)
+	}
+
+	s, err := store.NewEncryptedSQLiteStore(encPath, password)
+	if err != nil {
+		t.Fatalf("migrate legacy encrypted db: %v", err)
+	}
+	defer s.Close()
+	buckets, err := s.ListBuckets()
+	if err != nil || len(buckets) != 1 || buckets[0].Archived {
+		t.Fatalf("expected migrated bucket active, got %+v, %v", buckets, err)
+	}
+}
+
 func TestEncryptedSQLiteStore_CreateAndGetAccount(t *testing.T) {
 	dir := t.TempDir()
 	encPath := filepath.Join(dir, "test.enc")

@@ -99,10 +99,34 @@ func (b *Budget) DeleteTransaction(id string) (Transaction, error) {
 	return t, nil
 }
 
+func (b *Budget) DeleteBucket(id string) (Bucket, int, error) {
+	bucket, err := b.store.GetBucket(id)
+	if err != nil || bucket.Archived {
+		return Bucket{}, 0, fmt.Errorf("delete bucket: bucket not found: %s", id)
+	}
+	transactions, err := b.store.ListTransactions()
+	if err != nil {
+		return Bucket{}, 0, fmt.Errorf("delete bucket: %w", err)
+	}
+	linked := 0
+	for _, transaction := range transactions {
+		if transaction.BucketID == id {
+			linked++
+		}
+	}
+	if err := b.store.DeleteBucket(id); err != nil {
+		return Bucket{}, 0, fmt.Errorf("delete bucket: %w", err)
+	}
+	return bucket, linked, nil
+}
+
 func (b *Budget) Allocate(bucketID string, amount int64) error {
 	bk, err := b.store.GetBucket(bucketID)
 	if err != nil {
 		return fmt.Errorf("allocate: %w", err)
+	}
+	if bk.Archived {
+		return fmt.Errorf("allocate: bucket archived: %s", bucketID)
 	}
 
 	bk.Balance += amount
