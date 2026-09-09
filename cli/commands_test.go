@@ -24,6 +24,71 @@ func setupTransaction(t *testing.T) {
 	}
 }
 
+func TestAccountAddSupportsBudgetDirectory(t *testing.T) {
+	budgetDir := t.TempDir()
+	otherDir := t.TempDir()
+	t.Cleanup(func() { _ = os.Chdir(otherDir) })
+
+	if err := os.Chdir(otherDir); err != nil {
+		t.Fatal(err)
+	}
+
+	initCmd := cli.NewRootCmd()
+	initCmd.SetArgs([]string{"init", "--dir", budgetDir})
+	initCmd.SetIn(bytes.NewBufferString("n\n"))
+	if err := initCmd.Execute(); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs([]string{"account", "add", "checking", "checking", "100000", "--dir", budgetDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("account add with --dir: %v", err)
+	}
+
+	if _, err := os.Stat(budgetDir + "/balde.db"); err != nil {
+		t.Fatalf("budget database: %v", err)
+	}
+	if _, err := os.Stat(otherDir + "/balde.db"); !os.IsNotExist(err) {
+		t.Fatalf("unexpected database in working directory: %v", err)
+	}
+}
+
+func TestBudgetCommandsSupportDirectory(t *testing.T) {
+	budgetDir := t.TempDir()
+	otherDir := t.TempDir()
+	t.Cleanup(func() { _ = os.Chdir(otherDir) })
+	if err := os.Chdir(otherDir); err != nil {
+		t.Fatal(err)
+	}
+
+	initCmd := cli.NewRootCmd()
+	initCmd.SetArgs([]string{"init", "--dir", budgetDir})
+	initCmd.SetIn(bytes.NewBufferString("n\n"))
+	if err := initCmd.Execute(); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+
+	commands := [][]string{
+		{"account", "add", "checking", "checking", "100000", "--dir", budgetDir},
+		{"bucket", "add", "housing", "50000", "--dir", budgetDir},
+		{"transaction", "add", "-1000", "rent", "1", "7", "--dir", budgetDir},
+		{"allocate", "50000", "7", "--dir", budgetDir},
+		{"rain", "--dir", budgetDir},
+		{"view", "buckets", "--dir", budgetDir},
+		{"view", "transactions", "--dir", budgetDir},
+		{"status", "--dir", budgetDir},
+	}
+
+	for _, args := range commands {
+		cmd := cli.NewRootCmd()
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+	}
+}
+
 func TestTransactionCmd_AddTransaction(t *testing.T) {
 	dir := t.TempDir()
 	os.Chdir(dir)

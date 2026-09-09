@@ -109,9 +109,9 @@ func TestInitCmd_DifferentDir(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	cmd := newInitCmd()
-	cmd.Flags().Set("dir", "budget")
-	if err := cmd.RunE(cmd, []string{}); err != nil {
+	cmd := NewRootCmd()
+	cmd.SetArgs([]string{"init", "--dir", "budget"})
+	if err := cmd.Execute(); err != nil {
 		t.Fatalf("init command failed: %v", err)
 	}
 

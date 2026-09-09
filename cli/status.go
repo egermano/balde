@@ -38,7 +38,7 @@ func newStatusCmd() *cobra.Command {
 		Use:  "status",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

@@ -24,8 +24,16 @@ func newTransactionCmd() *cobra.Command {
 
 func newTransactionAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "add <amount> <description> <account_id> <bucket_id>",
-		Args: cobra.ExactArgs(4),
+		Use: "add <amount> <description> <account_id> <bucket_id>",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 4 {
+				return cobra.ExactArgs(4)(cmd, args)
+			}
+			if err := cmd.Flags().Parse(args[4:]); err != nil {
+				return err
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			amount, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
@@ -35,7 +43,7 @@ func newTransactionAddCmd() *cobra.Command {
 			accountID := args[2]
 			bucketID := args[3]
 
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}
@@ -61,7 +69,7 @@ func newTransactionDeleteCmd() *cobra.Command {
 		Use:  "delete <id>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}

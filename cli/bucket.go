@@ -30,7 +30,7 @@ func newBucketAddCmd() *cobra.Command {
 				return fmt.Errorf("invalid target: %s", args[1])
 			}
 
-			s, err := openBudgetDB()
+			s, err := openBudgetDB(cmd)
 			if err != nil {
 				return fmt.Errorf("open db: %w", err)
 			}
