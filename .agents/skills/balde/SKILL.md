@@ -228,7 +228,14 @@ Add a new financial account.
 cd /path/to/budget && balde account add "<name>" "<type>" <cents>
 ```
 
-Confirmation (parse CLI output for ID):
+The CLI prints the balance as raw integer cents:
+```text
+Account created: My Checking (checking) balance=1000000 id=1
+```
+
+Parse the account ID from the value after `id=`. Do not treat `balance=1000000` as a formatted currency amount; it is 1,000,000 cents.
+
+Present a polished confirmation to the user using the budget's currency settings:
 ```markdown
 ✓ Created account: "My Checking" (checking) with balance $10,000.00
 Account ID: 1
