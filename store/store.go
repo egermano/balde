@@ -99,8 +99,8 @@ func (s *SQLiteStore) UpdateAccount(a core.Account) error {
 
 func (s *SQLiteStore) CreateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
-		"INSERT INTO buckets (name, target, balance, budget_id) VALUES (?, ?, ?, ?)",
-		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID,
+		"INSERT INTO buckets (name, target, balance, budget_id, archived) VALUES (?, ?, ?, ?, ?)",
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived,
 	)
 	return err
 }
@@ -108,8 +108,8 @@ func (s *SQLiteStore) CreateBucket(b core.Bucket) error {
 func (s *SQLiteStore) GetBucket(id string) (core.Bucket, error) {
 	var b core.Bucket
 	err := s.db.QueryRow(
-		"SELECT id, name, target, balance, budget_id FROM buckets WHERE id = ?", id,
-	).Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID)
+		"SELECT id, name, target, balance, budget_id, archived FROM buckets WHERE id = ?", id,
+	).Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived)
 	if err != nil {
 		return core.Bucket{}, fmt.Errorf("bucket not found: %s", id)
 	}
@@ -117,7 +117,7 @@ func (s *SQLiteStore) GetBucket(id string) (core.Bucket, error) {
 }
 
 func (s *SQLiteStore) ListBuckets() ([]core.Bucket, error) {
-	rows, err := s.db.Query("SELECT id, name, target, balance, budget_id FROM buckets")
+	rows, err := s.db.Query("SELECT id, name, target, balance, budget_id, archived FROM buckets WHERE archived = 0")
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (s *SQLiteStore) ListBuckets() ([]core.Bucket, error) {
 	var buckets = make([]core.Bucket, 0)
 	for rows.Next() {
 		var b core.Bucket
-		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived); err != nil {
 			return nil, err
 		}
 		buckets = append(buckets, b)
@@ -136,15 +136,21 @@ func (s *SQLiteStore) ListBuckets() ([]core.Bucket, error) {
 
 func (s *SQLiteStore) UpdateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
-		"UPDATE buckets SET name = ?, target = ?, balance = ?, budget_id = ? WHERE id = ?",
-		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.ID,
+		"UPDATE buckets SET name = ?, target = ?, balance = ?, budget_id = ?, archived = ? WHERE id = ?",
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived, b.ID,
 	)
 	return err
 }
 
 func (s *SQLiteStore) DeleteBucket(id string) error {
-	_, err := s.db.Exec("DELETE FROM buckets WHERE id = ?", id)
-	return err
+	result, err := s.db.Exec("UPDATE buckets SET archived = 1 WHERE id = ? AND archived = 0", id)
+	if err != nil {
+		return err
+	}
+	if rows, _ := result.RowsAffected(); rows != 1 {
+		return fmt.Errorf("bucket not found: %s", id)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) CreateTransaction(t core.Transaction) error {
@@ -162,7 +168,7 @@ func (s *SQLiteStore) CreateTransaction(t core.Transaction) error {
 		return fmt.Errorf("account not found: %s", t.AccountID)
 	}
 	if t.Categorized {
-		result, err = tx.Exec("UPDATE buckets SET balance = balance + ? WHERE id = ?", t.Amount, t.BucketID)
+		result, err = tx.Exec("UPDATE buckets SET balance = balance + ? WHERE id = ? AND archived = 0", t.Amount, t.BucketID)
 		if err != nil {
 			return err
 		}

@@ -23,6 +23,7 @@ type Bucket struct {
 	Target   int64
 	Balance  int64
 	BudgetID string
+	Archived bool
 }
 
 type Transaction struct {

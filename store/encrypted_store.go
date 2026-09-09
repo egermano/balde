@@ -298,8 +298,8 @@ func (s *EncryptedSQLiteStore) UpdateAccount(a core.Account) error {
 
 func (s *EncryptedSQLiteStore) CreateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
-		"INSERT INTO buckets (name, target, balance, budget_id) VALUES (?, ?, ?, ?)",
-		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID,
+		"INSERT INTO buckets (name, target, balance, budget_id, archived) VALUES (?, ?, ?, ?, ?)",
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived,
 	)
 	return err
 }
@@ -307,8 +307,8 @@ func (s *EncryptedSQLiteStore) CreateBucket(b core.Bucket) error {
 func (s *EncryptedSQLiteStore) GetBucket(id string) (core.Bucket, error) {
 	var b core.Bucket
 	err := s.db.QueryRow(
-		"SELECT id, name, target, balance, budget_id FROM buckets WHERE id = ?", id,
-	).Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID)
+		"SELECT id, name, target, balance, budget_id, archived FROM buckets WHERE id = ?", id,
+	).Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived)
 	if err != nil {
 		return core.Bucket{}, fmt.Errorf("bucket not found: %s", id)
 	}
@@ -316,7 +316,7 @@ func (s *EncryptedSQLiteStore) GetBucket(id string) (core.Bucket, error) {
 }
 
 func (s *EncryptedSQLiteStore) ListBuckets() ([]core.Bucket, error) {
-	rows, err := s.db.Query("SELECT id, name, target, balance, budget_id FROM buckets")
+	rows, err := s.db.Query("SELECT id, name, target, balance, budget_id, archived FROM buckets WHERE archived = 0")
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (s *EncryptedSQLiteStore) ListBuckets() ([]core.Bucket, error) {
 	var buckets []core.Bucket
 	for rows.Next() {
 		var b core.Bucket
-		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived); err != nil {
 			return nil, err
 		}
 		buckets = append(buckets, b)
@@ -335,15 +335,21 @@ func (s *EncryptedSQLiteStore) ListBuckets() ([]core.Bucket, error) {
 
 func (s *EncryptedSQLiteStore) UpdateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
-		"UPDATE buckets SET name = ?, target = ?, balance = ?, budget_id = ? WHERE id = ?",
-		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.ID,
+		"UPDATE buckets SET name = ?, target = ?, balance = ?, budget_id = ?, archived = ? WHERE id = ?",
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived, b.ID,
 	)
 	return err
 }
 
 func (s *EncryptedSQLiteStore) DeleteBucket(id string) error {
-	_, err := s.db.Exec("DELETE FROM buckets WHERE id = ?", id)
-	return err
+	result, err := s.db.Exec("UPDATE buckets SET archived = 1 WHERE id = ? AND archived = 0", id)
+	if err != nil {
+		return err
+	}
+	if rows, _ := result.RowsAffected(); rows != 1 {
+		return fmt.Errorf("bucket not found: %s", id)
+	}
+	return nil
 }
 
 func (s *EncryptedSQLiteStore) CreateTransaction(t core.Transaction) error {
@@ -361,7 +367,7 @@ func (s *EncryptedSQLiteStore) CreateTransaction(t core.Transaction) error {
 		return fmt.Errorf("account not found: %s", t.AccountID)
 	}
 	if t.Categorized {
-		result, err = tx.Exec("UPDATE buckets SET balance = balance + ? WHERE id = ?", t.Amount, t.BucketID)
+		result, err = tx.Exec("UPDATE buckets SET balance = balance + ? WHERE id = ? AND archived = 0", t.Amount, t.BucketID)
 		if err != nil {
 			return err
 		}

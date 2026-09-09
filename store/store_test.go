@@ -51,8 +51,12 @@ func TestSQLiteStore_UpdateBucketEnforcesNormalizedNameUniqueness(t *testing.T) 
 	if err != nil {
 		t.Fatalf("list buckets: %v", err)
 	}
-	buckets[1].Name = " housing "
-	if err := s.UpdateBucket(buckets[1]); err == nil {
+	food := buckets[0]
+	if food.Name == "Housing" {
+		food = buckets[1]
+	}
+	food.Name = " housing "
+	if err := s.UpdateBucket(food); err == nil {
 		t.Fatal("expected duplicate bucket update error")
 	}
 }
@@ -95,6 +99,34 @@ func TestSQLiteStore_MigrationRejectsLegacyDuplicateBucketsWithoutDataLoss(t *te
 	}
 	if count != 2 {
 		t.Fatalf("expected both legacy buckets preserved, got %d", count)
+	}
+}
+
+func TestSQLiteStore_MigratesLegacyBucketsAsActive(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open legacy db: %v", err)
+	}
+	if _, err := db.Exec(`
+		CREATE TABLE buckets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, target INTEGER NOT NULL DEFAULT 0, balance INTEGER NOT NULL DEFAULT 0, budget_id TEXT NOT NULL);
+		INSERT INTO buckets (name, budget_id) VALUES ('Goals', 'b1');
+	`); err != nil {
+		t.Fatalf("seed legacy db: %v", err)
+	}
+	db.Close()
+
+	s, err := store.NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("migrate legacy db: %v", err)
+	}
+	defer s.Close()
+	buckets, err := s.ListBuckets()
+	if err != nil || len(buckets) != 1 || buckets[0].Archived {
+		t.Fatalf("expected migrated bucket active, got %+v, %v", buckets, err)
+	}
+	if err := s.DeleteBucket(buckets[0].ID); err != nil {
+		t.Fatalf("archive migrated bucket: %v", err)
 	}
 }
 
@@ -225,7 +257,7 @@ func TestSQLiteStore_UpdateBucket(t *testing.T) {
 	}
 }
 
-func TestSQLiteStore_DeleteBucket(t *testing.T) {
+func TestSQLiteStore_DeleteBucketArchivesAndFreesName(t *testing.T) {
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -240,6 +272,17 @@ func TestSQLiteStore_DeleteBucket(t *testing.T) {
 	buckets, _ = s.ListBuckets()
 	if len(buckets) != 0 {
 		t.Errorf("expected 0 buckets after delete, got %d", len(buckets))
+	}
+
+	archived, err := s.GetBucket(id)
+	if err != nil {
+		t.Fatalf("get archived bucket: %v", err)
+	}
+	if !archived.Archived {
+		t.Fatal("expected bucket to be archived")
+	}
+	if err := s.CreateBucket(core.Bucket{Name: "housing", Target: 60000, BudgetID: "b1"}); err != nil {
+		t.Fatalf("reuse archived bucket name: %v", err)
 	}
 }
 

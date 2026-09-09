@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS buckets (
 	name TEXT NOT NULL CHECK (trim(name) <> ''),
 	target INTEGER NOT NULL DEFAULT 0,
 	balance INTEGER NOT NULL DEFAULT 0,
-	budget_id TEXT NOT NULL
+	budget_id TEXT NOT NULL,
+	archived INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS transactions (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,11 +41,21 @@ func migrate(db *sql.DB) error {
 	if _, err := tx.Exec(schema); err != nil {
 		return err
 	}
+	var archivedColumn int
+	if err := tx.QueryRow("SELECT COUNT(*) FROM pragma_table_info('buckets') WHERE name = 'archived'").Scan(&archivedColumn); err != nil {
+		return err
+	}
+	if archivedColumn == 0 {
+		if _, err := tx.Exec("ALTER TABLE buckets ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"); err != nil {
+			return err
+		}
+	}
 
 	var budgetID, normalizedName string
 	err = tx.QueryRow(`
 		SELECT budget_id, lower(trim(name))
 		FROM buckets
+		WHERE archived = 0
 		GROUP BY budget_id, lower(trim(name))
 		HAVING COUNT(*) > 1
 		LIMIT 1
@@ -66,9 +77,12 @@ func migrate(db *sql.DB) error {
 	if _, err := tx.Exec("UPDATE buckets SET name = trim(name)"); err != nil {
 		return err
 	}
+	if _, err := tx.Exec("DROP INDEX IF EXISTS buckets_budget_normalized_name_unique"); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`
-		CREATE UNIQUE INDEX IF NOT EXISTS buckets_budget_normalized_name_unique
-		ON buckets (budget_id, lower(trim(name)))
+		CREATE UNIQUE INDEX buckets_budget_normalized_name_unique
+		ON buckets (budget_id, lower(trim(name))) WHERE archived = 0
 	`); err != nil {
 		return err
 	}
