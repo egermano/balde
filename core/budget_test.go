@@ -1,11 +1,47 @@
 package core_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/egermano/balde/core"
 )
+
+func TestBudget_AddBucket_RequiresUniqueNormalizedNameWithinBudget(t *testing.T) {
+	store := NewMemoryStore()
+	budget := core.NewBudget("b1", store)
+
+	bucket, err := budget.AddBucket("  Fixed Costs  ", 50000)
+	if err != nil {
+		t.Fatalf("add bucket: %v", err)
+	}
+	if bucket.Name != "Fixed Costs" {
+		t.Fatalf("expected trimmed name, got %q", bucket.Name)
+	}
+
+	if _, err := budget.AddBucket("fixed costs", 75000); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("expected duplicate bucket error, got %v", err)
+	}
+}
+
+func TestBudget_AddBucket_AllowsNormalizedNameInAnotherBudget(t *testing.T) {
+	store := NewMemoryStore()
+	if _, err := core.NewBudget("b1", store).AddBucket("Goals", 50000); err != nil {
+		t.Fatalf("add first bucket: %v", err)
+	}
+	if _, err := core.NewBudget("b2", store).AddBucket(" goals ", 75000); err != nil {
+		t.Fatalf("add bucket to another budget: %v", err)
+	}
+}
+
+func TestBudget_AddBucket_RejectsEmptyNormalizedName(t *testing.T) {
+	budget := core.NewBudget("b1", NewMemoryStore())
+
+	if _, err := budget.AddBucket("   ", 50000); err == nil {
+		t.Fatal("expected empty bucket name error")
+	}
+}
 
 func TestBudget_AddTransaction_ReturnsTransactionWithID(t *testing.T) {
 	store := NewMemoryStore()

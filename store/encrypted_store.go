@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/egermano/balde/core"
 	_ "modernc.org/sqlite"
@@ -32,11 +33,10 @@ func NewEncryptedSQLiteStore(encPath, password string) (*EncryptedSQLiteStore, e
 			db.Close()
 			return nil, fmt.Errorf("load encrypted db: %w", err)
 		}
-	} else {
-		if err := s.migrate(); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("migrate: %w", err)
-		}
+	}
+	if err := s.migrate(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
 	}
 
 	return s, nil
@@ -248,32 +248,7 @@ func escapeSQLString(s string) string {
 }
 
 func (s *EncryptedSQLiteStore) migrate() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS accounts (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		type TEXT NOT NULL,
-		balance INTEGER NOT NULL DEFAULT 0
-	);
-	CREATE TABLE IF NOT EXISTS buckets (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		target INTEGER NOT NULL DEFAULT 0,
-		balance INTEGER NOT NULL DEFAULT 0,
-		budget_id TEXT NOT NULL
-	);
-	CREATE TABLE IF NOT EXISTS transactions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		amount INTEGER NOT NULL,
-		description TEXT NOT NULL DEFAULT '',
-		date TEXT NOT NULL,
-		account_id TEXT NOT NULL,
-		bucket_id TEXT NOT NULL DEFAULT '',
-		categorized INTEGER NOT NULL DEFAULT 0
-	);
-	`
-	_, err := s.db.Exec(schema)
-	return err
+	return migrate(s.db)
 }
 
 func (s *EncryptedSQLiteStore) CreateAccount(a core.Account) error {
@@ -324,7 +299,7 @@ func (s *EncryptedSQLiteStore) UpdateAccount(a core.Account) error {
 func (s *EncryptedSQLiteStore) CreateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
 		"INSERT INTO buckets (name, target, balance, budget_id) VALUES (?, ?, ?, ?)",
-		b.Name, b.Target, b.Balance, b.BudgetID,
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID,
 	)
 	return err
 }
@@ -361,7 +336,7 @@ func (s *EncryptedSQLiteStore) ListBuckets() ([]core.Bucket, error) {
 func (s *EncryptedSQLiteStore) UpdateBucket(b core.Bucket) error {
 	_, err := s.db.Exec(
 		"UPDATE buckets SET name = ?, target = ?, balance = ?, budget_id = ? WHERE id = ?",
-		b.Name, b.Target, b.Balance, b.BudgetID, b.ID,
+		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.ID,
 	)
 	return err
 }
