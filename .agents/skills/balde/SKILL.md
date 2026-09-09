@@ -39,28 +39,31 @@ or run 'balde init [--dir <path>]' to create a new budget.
 
 ## Currency Formatting
 
-The CLI stores all amounts as **integer cents** (e.g., `50000` = $500.00). To format properly:
+The CLI stores all amounts as **integer cents**. Format them using integer arithmetic only; never convert cents to `float` or divide by `100.0`.
 
-1. Read `balde.json` to get currency settings:
-   - `currency_symbol` (e.g., `$`, `R$`, `€`)
-   - `decimal_separator` (e.g., `.` or `,`)
-   - `thousands_separator` (e.g., `,` or `.`)
-
-2. Convert cents to display value: `value = cents / 100.0`
-
-3. Apply separators:
-   - Add thousands separator every 3 digits from right
-   - Insert decimal separator for the 2 decimal places
-   - Handle zero: show `0.00`
-   - Handle negative: prepend `-` before symbol or after (locale-dependent)
-
-4. Prepend currency symbol
+1. Read these exact strings from `balde.json`:
+   - `currency_symbol` (for example, `$`, `R$`, or `€`)
+   - `decimal_separator` (for example, `.` or `,`)
+   - `thousands_separator` (for example, `,` or `.`)
+2. Record whether `cents < 0`, then obtain its non-negative magnitude without floating-point arithmetic. When implementing with signed 64-bit integers, avoid negating the minimum value directly; an overflow-safe expression is `magnitude = uint64(-(cents + 1)) + 1` for negative values and `uint64(cents)` otherwise.
+3. Calculate `whole = magnitude / 100` and `fraction = magnitude % 100` using integer division and remainder.
+4. Convert `whole` to decimal digits. Starting at the right, group the digits in sets of three and join the groups with the configured `thousands_separator`. Use `0` when `whole` is zero.
+5. Convert `fraction` to exactly two digits, including a leading zero when needed (`5` becomes `05`).
+6. Build the magnitude as `grouped_whole + decimal_separator + two_digit_fraction`.
+7. Prefix the configured `currency_symbol` exactly as stored. Do not add or remove spaces: current production formatting concatenates the symbol and magnitude, so a space appears only when it is already included in `currency_symbol` (for example, `"R$ "`).
+8. If the original cents value was negative, prefix `-` to the complete symbol-and-magnitude string. Zero is not negative.
 
 **Examples:**
-- `cents=123456` → `$1,234.56` (US)
-- `cents=123456` → `R$ 1.234,56` (Brazil)
-- `cents=0` → `$0.00`
-- `cents=-50000` → `-$50.00`
+
+| Cents | Symbol | Decimal | Thousands | Result | Case |
+|-------|--------|---------|-----------|--------|------|
+| `123456` | `$` | `.` | `,` | `$1,234.56` | US |
+| `123456` | `R$` | `,` | `.` | `R$1.234,56` | Brazil, matching current config behavior |
+| `123456` | `R$ ` | `,` | `.` | `R$ 1.234,56` | Brazil with spacing explicitly stored in the symbol |
+| `-50000` | `$` | `.` | `,` | `-$500.00` | Negative |
+| `0` | `$` | `.` | `,` | `$0.00` | Zero |
+| `5` | `$` | `.` | `,` | `$0.05` | Cents with leading zero |
+| `99` | `R$` | `,` | `.` | `R$0,99` | Cents with Brazilian separators |
 
 **Why format this way:** The CLI outputs raw integers which are hard for users to parse. By reading the config and formatting correctly, we present data in a way that matches the user's locale and expectations.
 
