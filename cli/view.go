@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/egermano/balde/core"
+	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +16,51 @@ func newViewCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newViewBucketsCmd())
+	cmd.AddCommand(newViewAccountsCmd())
 	cmd.AddCommand(newViewTransactionsCmd())
+	return cmd
+}
+
+func newViewAccountsCmd() *cobra.Command {
+	var asJSON bool
+
+	cmd := &cobra.Command{
+		Use:  "accounts",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := openBudgetDB(cmd)
+			if err != nil {
+				return fmt.Errorf("open db: %w", err)
+			}
+			defer s.Close()
+
+			accounts, err := s.ListAccounts()
+			if err != nil {
+				return fmt.Errorf("list accounts: %w", err)
+			}
+			if asJSON {
+				enc := json.NewEncoder(cmd.OutOrStdout())
+				enc.SetIndent("", "  ")
+				return enc.Encode(accounts)
+			}
+
+			dbPath, err := budgetDBPath(cmd)
+			if err != nil {
+				return err
+			}
+			config, err := store.ReadConfig(dbPath)
+			if err != nil {
+				return fmt.Errorf("read config: %w", err)
+			}
+
+			for _, account := range accounts {
+				balance := core.FormatAmount(account.Balance, config.DecimalSeparator, config.ThousandsSeparator, config.CurrencySymbol)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\n", account.ID, account.Name, account.Type, balance)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&asJSON, "json", false, "output as JSON")
 	return cmd
 }
 
