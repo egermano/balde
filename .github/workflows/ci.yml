@@ -46,6 +46,19 @@ jobs:
       - name: Run tests with coverage
         run: go test ./... -coverprofile=coverage.out -covermode=atomic
 
+      - name: Test Unix installer
+        run: sh scripts/test-install.sh
+
+  windows-installer:
+    name: Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test PowerShell installer
+        shell: powershell
+        run: ./scripts/test-install.ps1
+
   build:
     name: Build
     runs-on: ubuntu-latest
