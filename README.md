@@ -20,42 +20,34 @@ Balde implements the [bucket budgeting method](https://www.budgetwithbuckets.com
 
 ## Installation
 
-### Pre-built binaries
+Install or upgrade `balde` with a single command.
 
-Download the latest release from [GitHub Releases](https://github.com/egermano/balde/releases).
-
-#### Linux (amd64)
+#### Linux / macOS
 
 ```sh
-TAG=$(curl -fsSL https://api.github.com/repos/egermano/balde/releases | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | sed -n '1p')
-curl -fsSL "https://github.com/egermano/balde/releases/download/${TAG}/balde_Linux_x86_64.tar.gz" | tar xz
-sudo mv balde /usr/local/bin/
-```
-
-#### macOS (Apple Silicon/Intel)
-
-```sh
-TAG=$(curl -fsSL https://api.github.com/repos/egermano/balde/releases | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | sed -n '1p')
-ARCH=$(uname -m)
-if [ "$ARCH" = "arm64" ]; then
-  ARCH="arm64"
-else
-  ARCH="x86_64"
-fi
-curl -fsSL "https://github.com/egermano/balde/releases/download/${TAG}/balde_Darwin_${ARCH}.tar.gz" | tar xz
-sudo mv balde /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/egermano/balde/main/install.sh | bash
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
-$version = (Invoke-RestMethod https://api.github.com/repos/egermano/balde/releases)[0].tag_name
-Invoke-WebRequest -Uri "https://github.com/egermano/balde/releases/download/${version}/balde_Windows_x86_64.zip" -OutFile balde.zip -ErrorAction Stop
-Expand-Archive balde.zip -DestinationPath .
-Move-Item balde.exe $env:USERPROFILE\bin\
+irm https://raw.githubusercontent.com/egermano/balde/main/install.ps1 | iex
 ```
 
-Add `$env:USERPROFILE\bin` to your PATH if needed.
+The script detects your platform, verifies the download against the release checksum (sha256), and installs the binary — leaving nothing behind:
+
+- Linux/macOS: `~/.local/bin`
+- Windows: `%USERPROFILE%\bin`
+
+It is safe to re-run: if the latest version is already installed, it does nothing; otherwise it upgrades in place.
+
+| Environment variable | Description |
+|----------------------|-------------|
+| `BALDE_VERSION` | Pin a specific release (e.g. `v0.1.0-alpha.3`) |
+| `BALDE_INSTALL_DIR` | Custom install directory (must be on your `PATH`) |
+| `BALDE_FORCE=1` | Reinstall even if the latest version is already installed |
+
+If the install directory is not on your `PATH`, the script prints instructions to add it.
 
 ### Build from source
 
