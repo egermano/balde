@@ -97,6 +97,15 @@ if ($env:BALDE_FORCE -ne '1' -and $oldVersion) {
   }
 }
 
+if (Test-Path $target) {
+  try {
+    $lockProbe = [IO.File]::Open($target, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    $lockProbe.Dispose()
+  } catch {
+    throw "Cannot replace $target because it is in use. Close running balde processes and try again."
+  }
+}
+
 # --- download and verify ----------------------------------------------------
 
 $tmpDir = Join-Path ([IO.Path]::GetTempPath()) ("balde-install-" + [Guid]::NewGuid().ToString('N'))
