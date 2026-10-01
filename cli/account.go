@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/egermano/balde/app"
 	"github.com/egermano/balde/core"
 	"github.com/spf13/cobra"
 )
@@ -37,13 +38,13 @@ func newAccountAddCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-			a, err := budget.AddAccount(name, accountType, balance)
+			a := app.New("default", s)
+			acc, err := a.AddAccount(name, accountType, balance)
 			if err != nil {
 				return fmt.Errorf("add account: %w", err)
 			}
 
-			fmt.Fprintf(os.Stdout, "Account created: %s (%s) balance=%d id=%s\n", a.Name, a.Type, a.Balance, a.ID)
+			fmt.Fprintf(os.Stdout, "Account created: %s (%s) balance=%d id=%s\n", acc.Name, acc.Type, acc.Balance, acc.ID)
 			return nil
 		},
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/egermano/balde/core"
+	"github.com/egermano/balde/app"
 	"github.com/egermano/balde/store"
 	"github.com/egermano/balde/version"
 	"github.com/spf13/cobra"
@@ -168,7 +168,7 @@ func newInitCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
+			a := app.New("default", s)
 			defaultBuckets := []struct {
 				name   string
 				target int64
@@ -181,7 +181,7 @@ func newInitCmd() *cobra.Command {
 				{"goals", 0},
 			}
 			for _, db := range defaultBuckets {
-				if _, err := budget.AddBucket(db.name, db.target); err != nil {
+				if _, err := a.AddBucket(db.name, db.target); err != nil {
 					return fmt.Errorf("create default bucket %s: %w", db.name, err)
 				}
 			}

@@ -1,35 +1,11 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"github.com/egermano/balde/core"
+	"github.com/egermano/balde/app"
 	"github.com/spf13/cobra"
 )
-
-type BudgetStatus struct {
-	Accounts     []core.Account     `json:"accounts"`
-	Buckets      []core.Bucket      `json:"buckets"`
-	Transactions []core.Transaction `json:"transactions"`
-	Rain         int64              `json:"rain"`
-}
-
-func (s BudgetStatus) MarshalJSON() ([]byte, error) {
-	type statusJSON BudgetStatus
-
-	if s.Accounts == nil {
-		s.Accounts = []core.Account{}
-	}
-	if s.Buckets == nil {
-		s.Buckets = []core.Bucket{}
-	}
-	if s.Transactions == nil {
-		s.Transactions = []core.Transaction{}
-	}
-
-	return json.Marshal(statusJSON(s))
-}
 
 func newStatusCmd() *cobra.Command {
 	var asJSON bool
@@ -44,45 +20,20 @@ func newStatusCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-
-			accounts, err := s.ListAccounts()
+			a := app.New("default", s)
+			status, err := a.Status()
 			if err != nil {
-				return fmt.Errorf("list accounts: %w", err)
-			}
-
-			buckets, err := s.ListBuckets()
-			if err != nil {
-				return fmt.Errorf("list buckets: %w", err)
-			}
-
-			transactions, err := s.ListTransactions()
-			if err != nil {
-				return fmt.Errorf("list transactions: %w", err)
-			}
-
-			rain, err := budget.Rain()
-			if err != nil {
-				return fmt.Errorf("rain: %w", err)
-			}
-
-			status := BudgetStatus{
-				Accounts:     accounts,
-				Buckets:      buckets,
-				Transactions: transactions,
-				Rain:         rain,
+				return fmt.Errorf("status: %w", err)
 			}
 
 			if asJSON {
-				enc := json.NewEncoder(cmd.OutOrStdout())
-				enc.SetIndent("", "  ")
-				return enc.Encode(status)
+				return writeJSON(cmd, status)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Accounts: %d\n", len(accounts))
-			fmt.Fprintf(cmd.OutOrStdout(), "Buckets: %d\n", len(buckets))
-			fmt.Fprintf(cmd.OutOrStdout(), "Transactions: %d\n", len(transactions))
-			fmt.Fprintf(cmd.OutOrStdout(), "Rain: %d cents\n", rain)
+			fmt.Fprintf(cmd.OutOrStdout(), "Accounts: %d\n", len(status.Accounts))
+			fmt.Fprintf(cmd.OutOrStdout(), "Buckets: %d\n", len(status.Buckets))
+			fmt.Fprintf(cmd.OutOrStdout(), "Transactions: %d\n", len(status.Transactions))
+			fmt.Fprintf(cmd.OutOrStdout(), "Rain: %d cents\n", status.Rain)
 			return nil
 		},
 	}

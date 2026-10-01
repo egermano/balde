@@ -80,21 +80,35 @@ func TestViewCmd_AccountsJSON(t *testing.T) {
 		t.Fatalf("view accounts: %v", err)
 	}
 
-	var accounts []struct {
-		ID      string `json:"ID"`
-		Name    string `json:"Name"`
-		Type    string `json:"Type"`
-		Balance int64  `json:"Balance"`
-	}
+	var accounts []map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &accounts); err != nil {
 		t.Fatalf("parse JSON: %v\noutput: %s", err, buf.String())
 	}
 	if len(accounts) != 1 {
 		t.Fatalf("accounts count = %d, want 1", len(accounts))
 	}
-	if got := accounts[0]; got.ID != "1" || got.Name != "Savings" || got.Type != "savings" || got.Balance != 500000 {
-		t.Fatalf("account = %+v", got)
+
+	wantKeys := []string{"id", "name", "type", "balance"}
+	got := accounts[0]
+	for _, key := range wantKeys {
+		if _, ok := got[key]; !ok {
+			t.Errorf("account JSON missing key %q, got keys: %v", key, mapKeys(got))
+		}
 	}
+	if _, ok := got["ID"]; ok {
+		t.Errorf("account JSON has untagged key %q, got keys: %v", "ID", mapKeys(got))
+	}
+	if got["id"] != "1" || got["name"] != "Savings" || got["type"] != "savings" || got["balance"] != float64(500000) {
+		t.Errorf("account = %v", got)
+	}
+}
+
+func mapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func TestViewCmd_AccountsEmptyJSONIsArray(t *testing.T) {

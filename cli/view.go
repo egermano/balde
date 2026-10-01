@@ -1,9 +1,9 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/egermano/balde/app"
 	"github.com/egermano/balde/core"
 	"github.com/egermano/balde/store"
 	"github.com/spf13/cobra"
@@ -34,14 +34,13 @@ func newViewAccountsCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			accounts, err := s.ListAccounts()
+			a := app.New("default", s)
+			accounts, err := a.ListAccounts()
 			if err != nil {
 				return fmt.Errorf("list accounts: %w", err)
 			}
 			if asJSON {
-				enc := json.NewEncoder(cmd.OutOrStdout())
-				enc.SetIndent("", "  ")
-				return enc.Encode(accounts)
+				return writeJSON(cmd, accounts)
 			}
 
 			dbPath, err := budgetDBPath(cmd)
@@ -77,29 +76,20 @@ func newViewBucketsCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-			buckets, err := s.ListBuckets()
+			a := app.New("default", s)
+			buckets, err := a.ListBuckets()
 			if err != nil {
 				return fmt.Errorf("list buckets: %w", err)
 			}
 
 			if asJSON {
-				// Add fill percentage to JSON output
-				for _, bk := range buckets {
-					fillPercent := budget.CalculateFillPercentage(bk)
-					_ = fillPercent // Placeholder for future JSON field inclusion
-				}
-				enc := json.NewEncoder(cmd.OutOrStdout())
-				enc.SetIndent("", "  ")
-				return enc.Encode(buckets)
+				return writeJSON(cmd, buckets)
 			}
 
-			// Display buckets with fill percentage
 			for _, bk := range buckets {
-				fillPercent := budget.CalculateFillPercentage(bk)
 				fillDisplay := "Not set"
 				if bk.Target > 0 {
-					fillDisplay = fmt.Sprintf("%.1f%%", fillPercent)
+					fillDisplay = fmt.Sprintf("%.1f%%", bk.FillPercent)
 				}
 
 				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\ttarget=%d\tbalance=%d\tfill=%s\n",
@@ -126,15 +116,14 @@ func newViewTransactionsCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			txs, err := s.ListTransactions()
+			a := app.New("default", s)
+			txs, err := a.ListTransactions()
 			if err != nil {
 				return fmt.Errorf("list transactions: %w", err)
 			}
 
 			if asJSON {
-				enc := json.NewEncoder(cmd.OutOrStdout())
-				enc.SetIndent("", "  ")
-				return enc.Encode(txs)
+				return writeJSON(cmd, txs)
 			}
 
 			for _, tx := range txs {

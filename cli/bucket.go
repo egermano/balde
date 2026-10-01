@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egermano/balde/core"
+	"github.com/egermano/balde/app"
 	"github.com/spf13/cobra"
 )
 
@@ -34,11 +34,12 @@ func newBucketDeleteCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			bucket, err := s.GetBucket(args[0])
+			a := app.New("default", s)
+			bucket, err := a.GetBucket(args[0])
 			if err != nil || bucket.Archived {
 				return fmt.Errorf("delete bucket: bucket not found: %s", args[0])
 			}
-			transactions, err := s.ListTransactions()
+			transactions, err := a.ListTransactions()
 			if err != nil {
 				return fmt.Errorf("delete bucket: %w", err)
 			}
@@ -57,8 +58,7 @@ func newBucketDeleteCmd() *cobra.Command {
 				}
 			}
 
-			budget := core.NewBudget("default", s)
-			archived, _, err := budget.DeleteBucket(bucket.ID)
+			archived, _, err := a.DeleteBucket(bucket.ID)
 			if err != nil {
 				return err
 			}
@@ -87,8 +87,8 @@ func newBucketAddCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-			bk, err := budget.AddBucket(name, target)
+			a := app.New("default", s)
+			bk, err := a.AddBucket(name, target)
 			if err != nil {
 				return fmt.Errorf("add bucket: %w", err)
 			}
