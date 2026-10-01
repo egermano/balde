@@ -102,7 +102,7 @@ func TestBucketCmd_DeleteForceArchivesBucketWithTransactions(t *testing.T) {
 		t.Fatalf("unexpected output: %q", output)
 	}
 	txs := executeBucketCommand(t, "view", "transactions", "--json")
-	if !strings.Contains(txs, `"BucketID": "1"`) {
+	if !strings.Contains(txs, `"bucket_id": "1"`) {
 		t.Fatalf("expected transaction link preserved: %s", txs)
 	}
 }

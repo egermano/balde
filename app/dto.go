@@ -18,13 +18,13 @@ type Account struct {
 }
 
 type Bucket struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Target       int64   `json:"target"`
-	Balance      int64   `json:"balance"`
-	BudgetID     string  `json:"budget_id"`
-	Archived     bool    `json:"archived"`
-	FillPercent  float64 `json:"fill_percent"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Target      int64   `json:"target"`
+	Balance     int64   `json:"balance"`
+	BudgetID    string  `json:"budget_id"`
+	Archived    bool    `json:"archived"`
+	FillPercent float64 `json:"fill_percent"`
 }
 
 type Transaction struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egermano/balde/core"
+	"github.com/egermano/balde/app"
 	"github.com/spf13/cobra"
 )
 
@@ -49,8 +49,8 @@ func newTransactionAddCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-			tx, err := budget.AddTransaction(amount, description, time.Now(), accountID, bucketID)
+			a := app.New("default", s)
+			tx, err := a.AddTransaction(amount, description, time.Now(), accountID, bucketID)
 			if err != nil {
 				return fmt.Errorf("add transaction: %w", err)
 			}
@@ -75,7 +75,8 @@ func newTransactionDeleteCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			tx, err := s.GetTransaction(args[0])
+			a := app.New("default", s)
+			tx, err := a.GetTransaction(args[0])
 			if err != nil {
 				return fmt.Errorf("delete transaction: %w", err)
 			}
@@ -88,8 +89,7 @@ func newTransactionDeleteCmd() *cobra.Command {
 				}
 			}
 
-			budget := core.NewBudget("default", s)
-			deleted, err := budget.DeleteTransaction(args[0])
+			deleted, err := a.DeleteTransaction(args[0])
 			if err != nil {
 				return err
 			}

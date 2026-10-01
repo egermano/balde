@@ -145,7 +145,7 @@ func TestTransactionCmd_Delete_DefaultsToDeny(t *testing.T) {
 	if err := view.Execute(); err != nil {
 		t.Fatalf("view transactions: %v", err)
 	}
-	if !strings.Contains(output.String(), `"Description": "Coffee"`) {
+	if !strings.Contains(output.String(), `"description": "Coffee"`) {
 		t.Error("expected denied deletion to preserve transaction")
 	}
 }
@@ -174,10 +174,10 @@ func TestTransactionCmd_Delete_ForceDeletes(t *testing.T) {
 	if err := status.Execute(); err != nil {
 		t.Fatalf("status: %v", err)
 	}
-	if !strings.Contains(statusOutput.String(), `"Balance": 100000`) {
+	if !strings.Contains(statusOutput.String(), `"balance": 100000`) {
 		t.Errorf("expected account balance to be restored, got %q", statusOutput.String())
 	}
-	if !strings.Contains(statusOutput.String(), `"Balance": 0`) {
+	if !strings.Contains(statusOutput.String(), `"balance": 0`) {
 		t.Errorf("expected bucket balance to be restored, got %q", statusOutput.String())
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egermano/balde/core"
+	"github.com/egermano/balde/app"
 	"github.com/spf13/cobra"
 )
 
@@ -28,12 +28,12 @@ func newAllocateCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-			if _, err := s.GetBucket(bucketID); err != nil {
+			a := app.New("default", s)
+			if _, err := a.GetBucket(bucketID); err != nil {
 				return fmt.Errorf("allocate: %w", err)
 			}
 			if amount > 0 && !force {
-				rain, err := budget.Rain()
+				rain, err := a.Rain()
 				if err != nil {
 					return fmt.Errorf("rain: %w", err)
 				}
@@ -46,7 +46,7 @@ func newAllocateCmd() *cobra.Command {
 					}
 				}
 			}
-			if err := budget.Allocate(bucketID, amount); err != nil {
+			if err := a.Allocate(bucketID, amount); err != nil {
 				return fmt.Errorf("allocate: %w", err)
 			}
 
@@ -69,8 +69,8 @@ func newRainCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			budget := core.NewBudget("default", s)
-			rain, err := budget.Rain()
+			a := app.New("default", s)
+			rain, err := a.Rain()
 			if err != nil {
 				return fmt.Errorf("rain: %w", err)
 			}
