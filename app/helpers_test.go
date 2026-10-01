@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egermano/balde/core"
 )
@@ -25,4 +26,8 @@ func mustCreateTransaction(t *testing.T, s core.Store, tr core.Transaction) {
 	if err := s.CreateTransaction(tr); err != nil {
 		t.Fatalf("seed transaction: %v", err)
 	}
+}
+
+func date2026January15() (t time.Time) {
+	return time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC)
 }
