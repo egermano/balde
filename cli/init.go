@@ -47,6 +47,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newRainCmd())
 	root.AddCommand(newViewCmd())
 	root.AddCommand(newStatusCmd())
+	root.AddCommand(newPluginCmd())
 	return root
 }
 
