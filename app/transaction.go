@@ -16,6 +16,16 @@ func (a *App) ListTransactions() ([]Transaction, error) {
 	return out, nil
 }
 
+// DeleteTransaction removes the transaction, restores account and bucket
+// balances, and returns its DTO.
+func (a *App) DeleteTransaction(id string) (Transaction, error) {
+	t, err := a.budget.DeleteTransaction(id)
+	if err != nil {
+		return Transaction{}, err
+	}
+	return toTransactionDTO(t), nil
+}
+
 // AddTransaction creates a transaction and returns its DTO. A non-empty
 // bucketID categorizes it.
 func (a *App) AddTransaction(amount int64, description string, date time.Time, accountID, bucketID string) (Transaction, error) {

@@ -109,6 +109,47 @@ func TestListTransactionsReturnsDTOs(t *testing.T) {
 	}
 }
 
+func TestDeleteTransactionRestoresBalances(t *testing.T) {
+	store := newMemoryStore()
+	mustCreateAccount(t, store, core.Account{Name: "Main", Type: core.AccountChecking, Balance: 100000})
+	mustCreateBucket(t, store, core.Bucket{Name: "comfort", Target: 10000, Balance: 20000, BudgetID: "default"})
+	mustCreateTransaction(t, store, core.Transaction{
+		Amount: -2500, Description: "a", Date: time.Now(),
+		AccountID: "acc-1", BucketID: "bkt-1", Categorized: true,
+	})
+	a := app.New("default", store)
+
+	deleted, err := a.DeleteTransaction("txn-1")
+	if err != nil {
+		t.Fatalf("DeleteTransaction() error = %v, want nil", err)
+	}
+	if deleted.Amount != -2500 || deleted.Description != "a" {
+		t.Errorf("DeleteTransaction() = %+v, want the deleted txn", deleted)
+	}
+
+	status, err := a.Status()
+	if err != nil {
+		t.Fatalf("Status() error = %v, want nil", err)
+	}
+	if got := status.Accounts[0].Balance; got != 100000 {
+		t.Errorf("account balance = %d, want 100000", got)
+	}
+	if got := status.Buckets[0].Balance; got != 20000 {
+		t.Errorf("bucket balance = %d, want 20000", got)
+	}
+	if len(status.Transactions) != 0 {
+		t.Errorf("transactions after delete = %d, want 0", len(status.Transactions))
+	}
+}
+
+func TestDeleteTransactionUnknownIDReturnsError(t *testing.T) {
+	a := app.New("default", newMemoryStore())
+
+	if _, err := a.DeleteTransaction("nope"); err == nil {
+		t.Error("DeleteTransaction(unknown) = nil error, want error")
+	}
+}
+
 func TestListTransactionsEmptyBudgetSerializesAsArray(t *testing.T) {
 	a := app.New("default", newMemoryStore())
 
