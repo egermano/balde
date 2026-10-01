@@ -5,7 +5,12 @@
 // service is the only data path plugins can reach, via mediated host calls.
 package plugin
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"regexp"
+)
 
 // CapabilityType is the kind of extension point a plugin registers.
 type CapabilityType string
@@ -55,5 +60,61 @@ func ParseManifest(data []byte) (Manifest, error) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return Manifest{}, err
 	}
+	if err := m.validate(); err != nil {
+		return Manifest{}, err
+	}
 	return m, nil
+}
+
+var validName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+
+var (
+	validReadScopes  = map[string]bool{"accounts": true, "buckets": true, "transactions": true}
+	validWriteScopes = map[string]bool{"transactions": true, "allocate": true, "buckets": true}
+	validCapTypes    = map[CapabilityType]bool{
+		CapCommand:   true,
+		CapImporter:  true,
+		CapReporter:  true,
+		CapConnector: true,
+	}
+)
+
+func (m Manifest) validate() error {
+	if m.Name == "" {
+		return errors.New("manifest: name is required")
+	}
+	if !validName.MatchString(m.Name) {
+		return fmt.Errorf("manifest: name %q must be lowercase letters, digits and dashes", m.Name)
+	}
+	if m.Version == "" {
+		return errors.New("manifest: version is required")
+	}
+	if m.Protocol != 1 {
+		return fmt.Errorf("manifest: unsupported protocol %d (want 1)", m.Protocol)
+	}
+	if len(m.Capabilities) == 0 {
+		return errors.New("manifest: at least one capability is required")
+	}
+	for i, cap := range m.Capabilities {
+		if !validCapTypes[cap.Type] {
+			return fmt.Errorf("manifest: capability %d has unknown type %q", i, cap.Type)
+		}
+		if cap.Type == CapCommand && cap.Name == "" {
+			return fmt.Errorf("manifest: capability %d of type command requires a name", i)
+		}
+	}
+	for _, scope := range m.Permissions.Read {
+		if !validReadScopes[scope] {
+			return fmt.Errorf("manifest: permission read scope %q is not allowed", scope)
+		}
+	}
+	for _, scope := range m.Permissions.Write {
+		if !validWriteScopes[scope] {
+			return fmt.Errorf("manifest: permission write scope %q is not allowed", scope)
+		}
+	}
+	if m.Entrypoint.Run == "" {
+		return errors.New("manifest: entrypoint run is required")
+	}
+	return nil
 }

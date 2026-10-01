@@ -11,13 +11,8 @@ const validManifest = `{
   "version": "0.1.0",
   "protocol": 1,
   "title": "Vacation planner",
-  "capabilities": [
-    {"type": "command", "name": "vacation", "description": "Plan vacation savings"}
-  ],
-  "permissions": {
-    "read": ["accounts", "buckets", "transactions"],
-    "write": ["transactions", "allocate"]
-  },
+  "capabilities": [{"type": "command", "name": "vacation", "description": "Plan vacation savings"}],
+  "permissions": {"read": ["accounts", "buckets", "transactions"], "write": ["transactions", "allocate"]},
   "entrypoint": {"build": "go build -o bin/vacation .", "run": "bin/vacation"}
 }`
 
