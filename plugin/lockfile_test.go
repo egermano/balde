@@ -3,6 +3,7 @@ package plugin_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/egermano/balde/plugin"
@@ -54,7 +55,7 @@ func TestLockfileSaveAndReadRoundtrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("Get(vacation) not found in %v", reread.Plugins)
 	}
-	if got != entry {
+	if !reflect.DeepEqual(got, entry) {
 		t.Errorf("roundtrip = %+v, want %+v", got, entry)
 	}
 }
