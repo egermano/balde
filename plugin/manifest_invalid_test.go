@@ -107,7 +107,7 @@ func TestParseManifestValidScopes(t *testing.T) {
 	// every documented read/write scope must be accepted
 	doc := manifestWith(t, map[string]string{
 		`["accounts", "buckets", "transactions"]`: `["accounts", "buckets", "transactions"]`,
-		`["transactions", "allocate"]`:             `["transactions", "allocate", "buckets"]`,
+		`["transactions", "allocate"]`:            `["transactions", "allocate", "buckets"]`,
 	})
 	if _, err := plugin.ParseManifest(doc); err != nil {
 		t.Fatalf("ParseManifest() error = %v, want nil", err)
