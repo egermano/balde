@@ -95,6 +95,29 @@ func TestDeleteBucketUnknownIDReturnsError(t *testing.T) {
 	}
 }
 
+func TestBucketFillPercent(t *testing.T) {
+	store := newMemoryStore()
+	mustCreateBucket(t, store, core.Bucket{Name: "goals", Target: 50000, Balance: 20000, BudgetID: "default"})
+	mustCreateBucket(t, store, core.Bucket{Name: "comfort", Target: 0, Balance: 20000, BudgetID: "default"})
+	a := app.New("default", store)
+
+	buckets, err := a.ListBuckets()
+	if err != nil {
+		t.Fatalf("ListBuckets() error = %v, want nil", err)
+	}
+
+	byName := map[string]float64{}
+	for _, bk := range buckets {
+		byName[bk.Name] = bk.FillPercent
+	}
+	if got := byName["goals"]; got != 40 {
+		t.Errorf("goals fill_percent = %v, want 40", got)
+	}
+	if got := byName["comfort"]; got != 0 {
+		t.Errorf("zero-target fill_percent = %v, want 0", got)
+	}
+}
+
 func TestListBucketsReturnsDTOs(t *testing.T) {
 	store := newMemoryStore()
 	mustCreateBucket(t, store, core.Bucket{Name: "goals", Target: 50000, Balance: 20000, BudgetID: "default"})
@@ -108,7 +131,7 @@ func TestListBucketsReturnsDTOs(t *testing.T) {
 	if len(buckets) != 1 {
 		t.Fatalf("ListBuckets() returned %d buckets, want 1", len(buckets))
 	}
-	want := app.Bucket{ID: "bkt-1", Name: "goals", Target: 50000, Balance: 20000, BudgetID: "default"}
+	want := app.Bucket{ID: "bkt-1", Name: "goals", Target: 50000, Balance: 20000, BudgetID: "default", FillPercent: 40}
 	if buckets[0] != want {
 		t.Errorf("ListBuckets()[0] = %+v, want %+v", buckets[0], want)
 	}

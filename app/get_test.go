@@ -16,7 +16,7 @@ func TestGetBucketReturnsDTO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBucket() error = %v, want nil", err)
 	}
-	want := app.Bucket{ID: "bkt-1", Name: "goals", Target: 50000, Balance: 20000, BudgetID: "default"}
+	want := app.Bucket{ID: "bkt-1", Name: "goals", Target: 50000, Balance: 20000, BudgetID: "default", FillPercent: 40}
 	if bucket != want {
 		t.Errorf("GetBucket() = %+v, want %+v", bucket, want)
 	}

@@ -35,7 +35,7 @@ func (a *App) Status() (Status, error) {
 		status.Accounts = append(status.Accounts, toAccountDTO(acc))
 	}
 	for _, bk := range buckets {
-		status.Buckets = append(status.Buckets, toBucketDTO(bk))
+		status.Buckets = append(status.Buckets, a.bucketDTO(bk))
 	}
 	for _, t := range transactions {
 		status.Transactions = append(status.Transactions, toTransactionDTO(t))
