@@ -19,3 +19,10 @@ func New(budgetID string, store core.Store) *App {
 		store:  store,
 	}
 }
+
+// bucketDTO converts a core bucket and adds the computed fill percentage.
+func (a *App) bucketDTO(b core.Bucket) Bucket {
+	dto := toBucketDTO(b)
+	dto.FillPercent = a.budget.CalculateFillPercentage(b)
+	return dto
+}

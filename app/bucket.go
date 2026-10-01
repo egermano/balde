@@ -6,7 +6,7 @@ func (a *App) AddBucket(name string, target int64) (Bucket, error) {
 	if err != nil {
 		return Bucket{}, err
 	}
-	return toBucketDTO(bk), nil
+	return a.bucketDTO(bk), nil
 }
 
 // DeleteBucket archives the bucket and returns its DTO plus the number of
@@ -16,7 +16,7 @@ func (a *App) DeleteBucket(id string) (Bucket, int, error) {
 	if err != nil {
 		return Bucket{}, 0, err
 	}
-	return toBucketDTO(bucket), linked, nil
+	return a.bucketDTO(bucket), linked, nil
 }
 
 // ListBuckets returns all non-archived buckets as DTOs. Empty result is a
@@ -28,7 +28,7 @@ func (a *App) ListBuckets() ([]Bucket, error) {
 	}
 	out := make([]Bucket, 0, len(buckets))
 	for _, bk := range buckets {
-		out = append(out, toBucketDTO(bk))
+		out = append(out, a.bucketDTO(bk))
 	}
 	return out, nil
 }

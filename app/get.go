@@ -6,7 +6,7 @@ func (a *App) GetBucket(id string) (Bucket, error) {
 	if err != nil {
 		return Bucket{}, err
 	}
-	return toBucketDTO(bk), nil
+	return a.bucketDTO(bk), nil
 }
 
 // GetTransaction returns the transaction DTO for id.

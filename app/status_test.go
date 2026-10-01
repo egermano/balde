@@ -33,7 +33,7 @@ func TestStatusSeededBudget(t *testing.T) {
 	}
 
 	want := `{"accounts":[{"id":"acc-1","name":"Main","type":"checking","balance":100000}],` +
-		`"buckets":[{"id":"bkt-1","name":"goals","target":50000,"balance":20000,"budget_id":"default","archived":false}],` +
+		`"buckets":[{"id":"bkt-1","name":"goals","target":50000,"balance":20000,"budget_id":"default","archived":false,"fill_percent":40}],` +
 		`"transactions":[{"id":"txn-1","amount":100000,"description":"salary","date":"2026-01-15T10:30:00Z","account_id":"acc-1","bucket_id":"","categorized":false}],` +
 		`"rain":80000}`
 	if string(data) != want {
