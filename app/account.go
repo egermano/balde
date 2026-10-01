@@ -10,3 +10,17 @@ func (a *App) AddAccount(name string, accountType core.AccountType, initialBalan
 	}
 	return toAccountDTO(acc), nil
 }
+
+// ListAccounts returns all accounts as DTOs. Empty result is a non-nil
+// empty slice.
+func (a *App) ListAccounts() ([]Account, error) {
+	accounts, err := a.store.ListAccounts()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Account, 0, len(accounts))
+	for _, acc := range accounts {
+		out = append(out, toAccountDTO(acc))
+	}
+	return out, nil
+}
