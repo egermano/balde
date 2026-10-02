@@ -100,6 +100,7 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 		Capabilities: m.Capabilities,
 		Permissions:  m.Permissions,
 		Skill:        m.Skill,
+		Run:          m.Entrypoint.Run,
 	}
 
 	lock, err := ReadLockfile(projectDir)
