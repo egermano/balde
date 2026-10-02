@@ -28,6 +28,13 @@ Each gated run prints a one-line experimental notice on stderr.
 balde plugin install github.com/user/balde-plugin-vacation
 ```
 
+Repositories can host multiple plugins below their root. Use `--path` to
+select one:
+
+```sh
+balde plugin install github.com/egermano/balde --path plugins/vacation
+```
+
 `install` accepts any git repository reference (path or URL). It will:
 
 1. Clone the repository into `<budget>/.balde/plugins/src/<name>/`, pinned to
@@ -66,10 +73,24 @@ Deletes the plugin's source directory and its lockfile entry.
 - `sha` — the exact commit the source is pinned to
 - `artifact_hash` — SHA-256 of the executable, verified before every run
 - `capabilities` and `permissions` — what the plugin declared at install
+- `run` — the relative executable path used by the runtime
+- `skill` — the optional agent skill copied into `.agents/skills/`
 
 Plugins are **project-local**: they live next to `balde.db`, so each budget
 chooses its own plugins. Commit `.balde/plugins/lock.json` if you keep your
 budget in git.
+
+## Running plugin commands
+
+Command capabilities appear as normal Balde commands after installation:
+
+```sh
+balde vacation plan "Japan" --date 2027-03 --budget 1200000 --json
+```
+
+Plugin arguments are passed through unchanged. `--json` is recognized by
+Balde and emits the plugin's structured result. Before every run, Balde
+recalculates the executable SHA-256 and refuses a tampered artifact.
 
 ## Troubleshooting
 

@@ -21,7 +21,7 @@ A plugin is listed when it:
 
 | Plugin | Capabilities | Permissions | Description |
 |---|---|---|---|
-| — | — | — | _Nothing listed yet_ |
+| [Vacation planner](../../plugins/vacation) | `command` | read `accounts`, `buckets`; write `buckets`, `allocate` | Creates a date-encoded vacation bucket, funds the first monthly installment when rain covers it, and reports the remaining schedule. Install with `balde plugin install github.com/egermano/balde --path plugins/vacation`. |
 
 ## Submitting a plugin
 

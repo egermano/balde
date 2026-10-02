@@ -11,7 +11,7 @@
     }
   ],
   "permissions": {
-    "read": ["buckets"],
+    "read": ["accounts", "buckets"],
     "write": ["buckets", "allocate"]
   },
   "entrypoint": {
