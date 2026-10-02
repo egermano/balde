@@ -7,4 +7,5 @@ bin/
 .DS_Store
 balde.json
 balde-workspace/
+plugins/*/skill-workspace/
 .opencode/worktrees/

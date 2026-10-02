@@ -7,9 +7,10 @@
 
 - [Using plugins](using-plugins.md) — install, list, remove, the lockfile,
   troubleshooting
+- [Creating plugins](creating-plugins.md) — manifest, skill, and packaging
+- [Plugin protocol](protocol.md) — stdio JSON-RPC contract and host calls
+- [Testing plugins](testing-plugins.md) — unit, integration, and skill tests
 - [Recommended plugins](recommended.md) — curated community list
-- Creating plugins, the plugin protocol, and testing plugins — *coming with
-  the plugin runtime (Phase C)*
 
 ## Quickstart
 

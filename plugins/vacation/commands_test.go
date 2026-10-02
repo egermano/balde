@@ -7,7 +7,8 @@ import (
 )
 
 type fakeVacationHost struct {
-	buckets    []bucket
+	buckets     []bucket
+	accounts    []account
 	allocations []struct {
 		bucketID string
 		amount   int64
@@ -16,6 +17,10 @@ type fakeVacationHost struct {
 
 func (h *fakeVacationHost) call(method string, params any, output any) error {
 	switch method {
+	case "host/listAccounts":
+		out := output.(*[]account)
+		*out = append([]account(nil), h.accounts...)
+		return nil
 	case "host/listBuckets":
 		out := output.(*[]bucket)
 		*out = append([]bucket(nil), h.buckets...)
@@ -39,7 +44,7 @@ func (h *fakeVacationHost) call(method string, params any, output any) error {
 }
 
 func TestPlanCreatesVacationBucketAndAllocatesFirstInstallment(t *testing.T) {
-	host := &fakeVacationHost{}
+	host := &fakeVacationHost{accounts: []account{{Balance: 10_000}}}
 	now := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
 
 	result, err := plan(host, []string{"Japan", "--date", "2027-03", "--budget", "1000"}, now)
@@ -68,7 +73,7 @@ func TestPlanCreatesVacationBucketAndAllocatesFirstInstallment(t *testing.T) {
 }
 
 func TestPlanRoundsUpAndAdjustsFinalInstallment(t *testing.T) {
-	host := &fakeVacationHost{}
+	host := &fakeVacationHost{accounts: []account{{Balance: 10_000}}}
 	now := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
 
 	result, err := plan(host, []string{"Japan", "--date", "2027-01", "--budget", "1000"}, now)
@@ -91,6 +96,19 @@ func TestPlanRejectsExistingVacationBucketWithoutMutating(t *testing.T) {
 	}
 	if len(host.buckets) != 1 || len(host.allocations) != 0 {
 		t.Errorf("host mutated after duplicate: buckets=%+v allocations=%+v", host.buckets, host.allocations)
+	}
+}
+
+func TestPlanRejectsFirstInstallmentBeyondRainWithoutMutating(t *testing.T) {
+	host := &fakeVacationHost{accounts: []account{{Balance: 100}}}
+	now := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
+
+	_, err := plan(host, []string{"Japan", "--date", "2027-03", "--budget", "1000"}, now)
+	if err == nil {
+		t.Fatal("plan(insufficient rain) = nil error, want error")
+	}
+	if len(host.buckets) != 0 || len(host.allocations) != 0 {
+		t.Errorf("host mutated despite insufficient rain: buckets=%+v allocations=%+v", host.buckets, host.allocations)
 	}
 }
 

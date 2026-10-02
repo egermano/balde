@@ -17,6 +17,10 @@ type bucket struct {
 	Balance int64  `json:"balance"`
 }
 
+type account struct {
+	Balance int64 `json:"balance"`
+}
+
 type planOutput struct {
 	BucketName            string `json:"bucket_name"`
 	BucketID              string `json:"bucket_id"`
@@ -114,11 +118,26 @@ func plan(c vacationHost, args []string, now time.Time) (map[string]any, error) 
 		}
 	}
 
+	installment := monthlyInstallment(budget, months)
+	var accounts []account
+	if err := c.call("host/listAccounts", map[string]any{}, &accounts); err != nil {
+		return nil, err
+	}
+	var rain int64
+	for _, account := range accounts {
+		rain += account.Balance
+	}
+	for _, existing := range buckets {
+		rain -= existing.Balance
+	}
+	if rain < installment {
+		return nil, fmt.Errorf("insufficient rain: have %d cents, need %d cents for the first installment", rain, installment)
+	}
+
 	var created bucket
 	if err := c.call("host/addBucket", map[string]any{"name": bucketName, "target": budget}, &created); err != nil {
 		return nil, err
 	}
-	installment := monthlyInstallment(budget, months)
 	if err := c.call("host/allocate", map[string]any{"bucket_id": created.ID, "amount": installment}, nil); err != nil {
 		return nil, err
 	}

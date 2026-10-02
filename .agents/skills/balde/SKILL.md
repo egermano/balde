@@ -7,6 +7,21 @@ description: Use this whenever the user wants to manage their budget, check fina
 
 A skill for managing a Balde budget through the CLI. This skill runs `balde` commands, parses outputs (preferring JSON where available), converts raw cents to human-readable currency, and presents results as clean markdown tables.
 
+## Installed plugins
+
+Before deciding a requested feature needs a core Balde command, check whether
+the budget has a matching installed plugin:
+
+```bash
+BALDE_EXPERIMENTAL=1 balde plugin list
+```
+
+Plugins that ship agent instructions install them under
+`.agents/skills/balde-<plugin-name>/`. Read that skill when its capability is
+relevant; it contains the plugin-specific inputs, safety rules, and command
+workflow. Plugin commands are experimental, so use `BALDE_EXPERIMENTAL=1` for
+all plugin invocations.
+
 ## Prerequisites
 
 First, verify `balde` is installed and accessible:

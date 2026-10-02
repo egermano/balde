@@ -1,0 +1,38 @@
+{
+  "skill_name": "balde-vacation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to visit Japan in March 2027. The whole trip should cost R$12,000. Set up the savings plan in my Balde budget and tell me what I need to reserve each month.",
+      "expected_output": "Checks rain and buckets, converts R$12,000.00 to 1200000 cents, invokes vacation plan with the experimental opt-in, and explains the first and recurring allocations.",
+      "files": [],
+      "expectations": [
+        "Uses BALDE_EXPERIMENTAL=1 and the exact vacation plan command with Japan, 2027-03, and 1200000 cents.",
+        "Checks buckets and rain before creating the plan.",
+        "Explains a 240000-cent first and regular monthly allocation across five months."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "can u make me a travel fund for rio de janeiro? i'm going 2027-08 and can spend 8500 reais total",
+      "expected_output": "Requests any missing budget context if needed, uses YYYY-MM and cents, checks the eight-bucket constraint, and runs the date-encoded vacation plan without inventing facts.",
+      "files": [],
+      "expectations": [
+        "Uses the vacation plugin command with Rio de Janeiro, 2027-08, and 850000 cents.",
+        "Checks the experimental gate, available rain, and the eight-bucket limit before mutation.",
+        "Explains the 85000-cent monthly plan without inventing a balance."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "How is my Japan March 2027 trip fund doing? What do I allocate this month?",
+      "expected_output": "Uses vacation schedule with Japan and 2027-03, reports remaining balance and the next allocation rather than creating a duplicate bucket.",
+      "files": [],
+      "expectations": [
+        "Uses vacation schedule with Japan and 2027-03.",
+        "Does not create a duplicate bucket or immediately allocate money.",
+        "Explains that the command provides the next exact allocation."
+      ]
+    }
+  ]
+}
