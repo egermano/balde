@@ -71,6 +71,9 @@ func newPluginInstallCmd() *cobra.Command {
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Plugin installed: %s %s (commit %s)\n", entry.Name, entry.Version, shortSHA(entry.SHA))
+			if entry.HasSkill() {
+				fmt.Fprintf(cmd.OutOrStdout(), "Skill installed: .agents/skills/balde-%s\n", entry.Name)
+			}
 			return nil
 		},
 	}
@@ -102,7 +105,11 @@ func newPluginListCmd() *cobra.Command {
 				return nil
 			}
 			for _, p := range lock.Plugins {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", p.Name, p.Version, p.Source)
+				skill := "-"
+				if p.HasSkill() {
+					skill = "balde-" + p.Name
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\tskill=%s\n", p.Name, p.Version, p.Source, skill)
 			}
 			return nil
 		},

@@ -32,5 +32,9 @@ func Remove(projectDir, name string) error {
 	if err := lock.Save(projectDir); err != nil {
 		return fmt.Errorf("remove: %w", err)
 	}
+
+	if err := removeSkill(projectDir, name); err != nil {
+		return fmt.Errorf("remove: %w", err)
+	}
 	return nil
 }
