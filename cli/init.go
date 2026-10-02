@@ -48,6 +48,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newViewCmd())
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newPluginCmd())
+	registerInstalledPluginCommands(root)
 	return root
 }
 
