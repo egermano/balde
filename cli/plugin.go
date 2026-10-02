@@ -50,7 +50,8 @@ func projectDir(cmd *cobra.Command) (string, error) {
 }
 
 func newPluginInstallCmd() *cobra.Command {
-	return &cobra.Command{
+	var path string
+	cmd := &cobra.Command{
 		Use:   "install <source>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Install a plugin from a git repository (path or URL)",
@@ -64,7 +65,7 @@ func newPluginInstallCmd() *cobra.Command {
 				return err
 			}
 
-			entry, err := plugin.Install(dir, args[0])
+			entry, err := plugin.Install(dir, args[0], path)
 			if err != nil {
 				return err
 			}
@@ -73,6 +74,8 @@ func newPluginInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&path, "path", "", "subdirectory inside the repository where the plugin lives")
+	return cmd
 }
 
 func newPluginListCmd() *cobra.Command {

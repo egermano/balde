@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 // CapabilityType is the kind of extension point a plugin registers.
@@ -115,6 +117,23 @@ func (m Manifest) validate() error {
 	}
 	if m.Entrypoint.Run == "" {
 		return errors.New("manifest: entrypoint run is required")
+	}
+	if err := validateRunPath(m.Entrypoint.Run); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateRunPath ensures the entrypoint stays inside the plugin directory:
+// relative, no ".." segments. Absolute paths and traversals are rejected.
+func validateRunPath(run string) error {
+	if filepath.IsAbs(run) {
+		return fmt.Errorf("manifest: entrypoint run %q must be a relative path", run)
+	}
+	for _, part := range strings.Split(run, string(filepath.Separator)) {
+		if part == ".." {
+			return fmt.Errorf("manifest: entrypoint run %q must not escape the plugin directory", run)
+		}
 	}
 	return nil
 }
