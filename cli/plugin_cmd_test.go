@@ -210,6 +210,41 @@ func TestInstalledPluginCommandRefusedWithoutOptIn(t *testing.T) {
 	}
 }
 
+func TestInstalledPluginCommandAcceptsRootExperimentalFlag(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BALDE_EXPERIMENTAL", "")
+	setupInitBudget(t)
+
+	pluginPath := filepath.Join(dir, ".balde", "plugins", "src", "hello", "bin", "plugin")
+	script := "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *initialize*) echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"name\":\"hello\",\"protocol\":1}}';; *command/execute*) echo '{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"text\":\"flag works\"}}'; exit;; esac; done\n"
+	if err := os.MkdirAll(filepath.Dir(pluginPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pluginPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(pluginPath)
+	sum := sha256.Sum256(data)
+	lock := `{"plugins":[{"name":"hello","version":"0.1.0","source":"fixture","sha":"x","artifact_hash":"sha256:` + hex.EncodeToString(sum[:]) + `","run":"bin/plugin","capabilities":[{"type":"command","name":"hello"}],"permissions":{}}]}`
+	if err := os.WriteFile(filepath.Join(dir, ".balde", "plugins", "lock.json"), []byte(lock), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs([]string{"--experimental", "hello"})
+	cmd.SetOut(&out)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("installed plugin --experimental error = %v", err)
+	}
+	if !strings.Contains(out.String(), "flag works") {
+		t.Errorf("output = %q, want plugin result", out.String())
+	}
+}
+
 func TestVacationPluginInstallAndPlanEndToEnd(t *testing.T) {
 	project := t.TempDir()
 	if err := os.Chdir(project); err != nil {
