@@ -1,0 +1,22 @@
+{
+  "name": "vacation",
+  "version": "0.1.0",
+  "protocol": 1,
+  "title": "Vacation planner",
+  "capabilities": [
+    {
+      "type": "command",
+      "name": "vacation",
+      "description": "Plan a vacation savings bucket and monthly allocation schedule"
+    }
+  ],
+  "permissions": {
+    "read": ["buckets"],
+    "write": ["buckets", "allocate"]
+  },
+  "entrypoint": {
+    "build": "go build -o bin/vacation .",
+    "run": "bin/vacation"
+  },
+  "skill": "skill"
+}
