@@ -98,13 +98,24 @@ func (m Manifest) validate() error {
 	if len(m.Capabilities) == 0 {
 		return errors.New("manifest: at least one capability is required")
 	}
-	for i, cap := range m.Capabilities {
-		if !validCapTypes[cap.Type] {
-			return fmt.Errorf("manifest: capability %d has unknown type %q", i, cap.Type)
+	commandNames := make(map[string]bool)
+	for i, capability := range m.Capabilities {
+		if !validCapTypes[capability.Type] {
+			return fmt.Errorf("manifest: capability %d has unknown type %q", i, capability.Type)
 		}
-		if cap.Type == CapCommand && cap.Name == "" {
+		if capability.Type != CapCommand {
+			continue
+		}
+		if capability.Name == "" {
 			return fmt.Errorf("manifest: capability %d of type command requires a name", i)
 		}
+		if !validName.MatchString(capability.Name) {
+			return fmt.Errorf("manifest: capability %d command name %q must be lowercase letters, digits and dashes", i, capability.Name)
+		}
+		if commandNames[capability.Name] {
+			return fmt.Errorf("manifest: duplicate command capability name %q", capability.Name)
+		}
+		commandNames[capability.Name] = true
 	}
 	for _, scope := range m.Permissions.Read {
 		if !validReadScopes[scope] {
