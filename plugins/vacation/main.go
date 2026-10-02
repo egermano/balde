@@ -183,6 +183,14 @@ func schedule(c vacationHost, args []string, now time.Time) (map[string]any, err
 			}, nil
 		}
 		installment := monthlyInstallment(remaining, months)
+		// A newly created plan has already made this month's first
+		// installment. Keep the published regular amount for the next month
+		// rather than spreading the remainder across that already-paid month.
+		// Later months continue to adapt to the remaining balance.
+		plannedFirstInstallment := monthlyInstallment(existing.Target, months)
+		if existing.Balance == plannedFirstInstallment && months > 1 {
+			installment = plannedFirstInstallment
+		}
 		return map[string]any{
 			"text": fmt.Sprintf("%d cents remain for %q. Allocate %d cents this month: balde allocate %d %s", remaining, bucketName, installment, installment, existing.ID),
 			"json": map[string]any{"bucket_name": bucketName, "bucket_id": existing.ID, "remaining": remaining, "months": months, "monthly_installment": installment},

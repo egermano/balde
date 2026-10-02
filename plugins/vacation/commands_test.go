@@ -125,3 +125,20 @@ func TestScheduleReportsRemainingAllocation(t *testing.T) {
 		t.Errorf("schedule json = %+v, want remaining 800 / 4 months / 200", json)
 	}
 }
+
+func TestScheduleKeepsPlannedInstallmentInCreationMonth(t *testing.T) {
+	// The first 200-cent installment was allocated by plan() this month. The
+	// next installment must remain 200, not be diluted across all five months
+	// that existed before the first allocation.
+	host := &fakeVacationHost{buckets: []bucket{{ID: "bkt-1", Name: "vacation-japan-2027-03", Target: 1000, Balance: 200}}}
+	now := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
+
+	result, err := schedule(host, []string{"Japan", "--date", "2027-03"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	json := result["json"].(map[string]any)
+	if json["monthly_installment"] != int64(200) {
+		t.Errorf("monthly_installment = %v, want planned 200-cent installment", json["monthly_installment"])
+	}
+}
