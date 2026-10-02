@@ -20,6 +20,7 @@ type LockEntry struct {
 	Capabilities []Capability `json:"capabilities"`
 	Permissions  Permissions  `json:"permissions"`
 	Skill        string       `json:"skill,omitempty"`
+	Run          string       `json:"run"`
 }
 
 // HasSkill reports whether the installed plugin ships an agent skill.
