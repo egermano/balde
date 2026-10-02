@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/egermano/balde/app"
 	"github.com/egermano/balde/plugin"
@@ -13,7 +15,7 @@ import (
 // available as normal root commands. A malformed or absent lockfile leaves
 // the base CLI usable; `balde plugin list` reports lockfile errors directly.
 func registerInstalledPluginCommands(root *cobra.Command) {
-	lock, err := plugin.ReadLockfile(".")
+	lock, err := plugin.ReadLockfile(pluginProjectDirFromArgs(os.Args[1:]))
 	if err != nil {
 		return
 	}
@@ -44,14 +46,9 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 		// Cobra. The host only recognizes --json and passes all other args on.
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// DisableFlagParsing leaves even inherited flags in args. Consume the
-			// experimental opt-in here before applying the runtime gate.
-			for _, arg := range args {
-				if arg == "--experimental" {
-					if err := cmd.Root().PersistentFlags().Set("experimental", "true"); err != nil {
-						return err
-					}
-				}
+			pluginArgs, err := consumePluginHostFlags(cmd, args)
+			if err != nil {
+				return err
 			}
 			if err := requireExperimental(cmd); err != nil {
 				return err
@@ -89,18 +86,15 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 				Stderr: cmd.ErrOrStderr(),
 			}
 			asJSON := false
-			pluginArgs := make([]string, 0, len(args))
-			for _, arg := range args {
+			forwardedArgs := make([]string, 0, len(pluginArgs))
+			for _, arg := range pluginArgs {
 				if arg == "--json" {
 					asJSON = true
 					continue
 				}
-				if arg == "--experimental" {
-					continue
-				}
-				pluginArgs = append(pluginArgs, arg)
+				forwardedArgs = append(forwardedArgs, arg)
 			}
-			result, err := runner.Run(capability.Name, pluginArgs)
+			result, err := runner.Run(capability.Name, forwardedArgs)
 			if err != nil {
 				return err
 			}
@@ -119,4 +113,52 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 		},
 	}
 	return cmd
+}
+
+// pluginProjectDirFromArgs mirrors the persistent --dir flag early enough to
+// discover command capabilities, before Cobra resolves the requested command.
+func pluginProjectDirFromArgs(args []string) string {
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--dir" || args[i] == "-d":
+			if i+1 < len(args) {
+				return dirOrDefault(args[i+1])
+			}
+		case strings.HasPrefix(args[i], "--dir="):
+			return dirOrDefault(strings.TrimPrefix(args[i], "--dir="))
+		}
+	}
+	return "."
+}
+
+// consumePluginHostFlags handles inherited host flags that Cobra intentionally
+// leaves opaque so plugin-owned flags can pass through unchanged.
+func consumePluginHostFlags(cmd *cobra.Command, args []string) ([]string, error) {
+	forwarded := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--experimental":
+			if err := cmd.Root().PersistentFlags().Set("experimental", "true"); err != nil {
+				return nil, err
+			}
+			continue
+		case "--dir", "-d":
+			if i+1 == len(args) {
+				return nil, fmt.Errorf("flag needs an argument: %s", args[i])
+			}
+			if err := cmd.Root().PersistentFlags().Set("dir", args[i+1]); err != nil {
+				return nil, err
+			}
+			i++
+			continue
+		}
+		if strings.HasPrefix(args[i], "--dir=") {
+			if err := cmd.Root().PersistentFlags().Set("dir", strings.TrimPrefix(args[i], "--dir=")); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		forwarded = append(forwarded, args[i])
+	}
+	return forwarded, nil
 }

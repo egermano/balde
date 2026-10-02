@@ -28,6 +28,13 @@ Each gated run prints a one-line experimental notice on stderr.
 balde plugin install github.com/user/balde-plugin-vacation
 ```
 
+Pin a GitHub shorthand to a tag, branch, or commit with `@<revision>`. Balde
+records the resolved commit in the lockfile:
+
+```sh
+balde plugin install github.com/user/balde-plugin-vacation@v1.2.0
+```
+
 Repositories can host multiple plugins below their root. Use `--path` to
 select one:
 

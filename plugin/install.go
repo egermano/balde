@@ -40,9 +40,15 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 	}
 	defer os.RemoveAll(tmp)
 
+	cloneSource, ref := ParseSourceReference(source)
 	cloneDir := filepath.Join(tmp, "repo")
-	if out, err := gitRun(tmp, "clone", "--quiet", ResolveSource(source), cloneDir); err != nil {
+	if out, err := gitRun(tmp, "clone", "--quiet", cloneSource, cloneDir); err != nil {
 		return LockEntry{}, fmt.Errorf("install: clone: %w\n%s", err, out)
+	}
+	if ref != "" {
+		if out, err := gitRun(cloneDir, "checkout", "--quiet", "--detach", ref); err != nil {
+			return LockEntry{}, fmt.Errorf("install: checkout %q: %w\n%s", ref, err, out)
+		}
 	}
 
 	src := cloneDir

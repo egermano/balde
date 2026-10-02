@@ -245,6 +245,49 @@ func TestInstalledPluginCommandAcceptsRootExperimentalFlag(t *testing.T) {
 	}
 }
 
+func TestInstalledPluginCommandUsesProjectSelectedByDirFlag(t *testing.T) {
+	project := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Chdir(project); err != nil {
+		t.Fatal(err)
+	}
+	setupInitBudget(t)
+	if err := os.Chdir(outside); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BALDE_EXPERIMENTAL", "1")
+
+	pluginPath := filepath.Join(project, ".balde", "plugins", "src", "hello", "bin", "plugin")
+	script := "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *initialize*) echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"name\":\"hello\",\"protocol\":1}}';; *command/execute*) echo '{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"text\":\"ran from selected project\"}}'; exit;; esac; done\n"
+	if err := os.MkdirAll(filepath.Dir(pluginPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pluginPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(pluginPath)
+	sum := sha256.Sum256(data)
+	lock := `{"plugins":[{"name":"hello","version":"0.1.0","source":"fixture","sha":"x","artifact_hash":"sha256:` + hex.EncodeToString(sum[:]) + `","run":"bin/plugin","capabilities":[{"type":"command","name":"hello"}],"permissions":{}}]}`
+	if err := os.WriteFile(filepath.Join(project, ".balde", "plugins", "lock.json"), []byte(lock), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldArgs := os.Args
+	os.Args = []string{"balde", "hello", "--dir", project}
+	t.Cleanup(func() { os.Args = oldArgs })
+
+	var out bytes.Buffer
+	cmd := cli.NewRootCmd()
+	cmd.SetArgs([]string{"hello", "--dir", project})
+	cmd.SetOut(&out)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("plugin command with --dir: %v", err)
+	}
+	if !strings.Contains(out.String(), "ran from selected project") {
+		t.Errorf("output = %q, want plugin result", out.String())
+	}
+}
+
 func TestVacationPluginInstallAndPlanEndToEnd(t *testing.T) {
 	project := t.TempDir()
 	if err := os.Chdir(project); err != nil {

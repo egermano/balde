@@ -199,6 +199,24 @@ func TestInstallDuplicateRejected(t *testing.T) {
 	}
 }
 
+func TestInstallChecksOutGitHubStyleRevision(t *testing.T) {
+	project := t.TempDir()
+	repo := fixtureRepo(t, "vacation")
+	tagSHA := strings.TrimSpace(git(t, repo, "rev-parse", "HEAD"))
+	git(t, repo, "tag", "v0.1.0")
+	writeFile(t, filepath.Join(repo, "README.md"), "newer commit")
+	git(t, repo, "add", "README.md")
+	git(t, repo, "-c", "user.name=test", "-c", "user.email=test@test", "commit", "-q", "-m", "newer")
+
+	entry, err := plugin.Install(project, repo+"@v0.1.0", "")
+	if err != nil {
+		t.Fatalf("Install() error = %v, want nil", err)
+	}
+	if entry.SHA != tagSHA {
+		t.Errorf("installed SHA = %q, want tagged SHA %q", entry.SHA, tagSHA)
+	}
+}
+
 func TestInstallInvalidManifestRejected(t *testing.T) {
 	project := t.TempDir()
 	dir := t.TempDir()
