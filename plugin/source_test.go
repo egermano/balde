@@ -52,3 +52,42 @@ func TestResolveSource(t *testing.T) {
 		})
 	}
 }
+
+func TestParseGitHubReference(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		url    string
+		ref    string
+	}{
+		{
+			name:   "bare shorthand",
+			source: "github.com/user/plugin",
+			url:    "https://github.com/user/plugin.git",
+		},
+		{
+			name:   "shorthand with tag",
+			source: "github.com/user/plugin@v1.2.0",
+			url:    "https://github.com/user/plugin.git",
+			ref:    "v1.2.0",
+		},
+		{
+			name:   "shorthand with git suffix",
+			source: "github.com/user/plugin.git",
+			url:    "https://github.com/user/plugin.git",
+		},
+		{
+			name:   "full url remains a clone source",
+			source: "https://github.com/user/plugin.git",
+			url:    "https://github.com/user/plugin.git",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url, ref := plugin.ParseSourceReference(tt.source)
+			if url != tt.url || ref != tt.ref {
+				t.Errorf("ParseSourceReference(%q) = (%q, %q), want (%q, %q)", tt.source, url, ref, tt.url, tt.ref)
+			}
+		})
+	}
+}
