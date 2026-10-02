@@ -111,6 +111,17 @@ func TestInstallSubdirectoryMissingManifest(t *testing.T) {
 	}
 }
 
+func TestInstallSubdirectoryCannotEscapeRepository(t *testing.T) {
+	project := t.TempDir()
+	repo := fixtureRepoSubdir(t, "vacation", "plugins/vacation")
+
+	if _, err := plugin.Install(project, repo, "../outside"); err == nil {
+		t.Error("Install(escaping subpath) = nil error, want error")
+	} else if !strings.Contains(err.Error(), "path") {
+		t.Errorf("error = %q, want path validation error", err)
+	}
+}
+
 func TestInstallLeavesNoStagingDirectories(t *testing.T) {
 	project := t.TempDir()
 	repo := fixtureRepo(t, "vacation")
