@@ -19,6 +19,11 @@ import (
 // Installing is the explicit trust grant: nothing runs at install time
 // except the declared build command.
 func Install(projectDir, source, path string) (LockEntry, error) {
+	absoluteProjectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return LockEntry{}, fmt.Errorf("install: resolve project directory: %w", err)
+	}
+	projectDir = absoluteProjectDir
 	pluginsDir := filepath.Join(projectDir, ".balde", "plugins")
 
 	// Stage inside the plugins directory so the final move never crosses a

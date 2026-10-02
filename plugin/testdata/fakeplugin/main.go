@@ -24,10 +24,10 @@ type wireMessage struct {
 }
 
 var (
-	writeMu  sync.Mutex
-	stdoutW  *bufio.Writer
-	hostMu   sync.Mutex
-	pending  = map[int64]chan wireMessage{}
+	writeMu   sync.Mutex
+	stdoutW   *bufio.Writer
+	hostMu    sync.Mutex
+	pending   = map[int64]chan wireMessage{}
 	nextReqID = int64(100) // ids for plugin->host calls
 )
 

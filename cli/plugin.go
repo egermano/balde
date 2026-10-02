@@ -13,7 +13,6 @@ func newPluginCmd() *cobra.Command {
 		Use:   "plugin",
 		Short: "Manage balde plugins (experimental)",
 	}
-	cmd.PersistentFlags().Bool("experimental", false, "opt in to experimental features")
 
 	cmd.AddCommand(newPluginInstallCmd())
 	cmd.AddCommand(newPluginListCmd())
