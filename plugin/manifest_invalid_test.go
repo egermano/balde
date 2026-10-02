@@ -74,6 +74,20 @@ func TestParseManifestInvalid(t *testing.T) {
 			want: "name",
 		},
 		{
+			name: "command capability name with spaces",
+			doc: manifestWith(t, map[string]string{
+				`"name": "vacation", "description": "Plan vacation savings"`: `"name": "vacation plan", "description": "Plan vacation savings"`,
+			}),
+			want: "capability",
+		},
+		{
+			name: "duplicate command capability names",
+			doc: manifestWith(t, map[string]string{
+				`[{"type": "command", "name": "vacation", "description": "Plan vacation savings"}]`: `[{"type":"command","name":"vacation"},{"type":"command","name":"vacation"}]`,
+			}),
+			want: "duplicate",
+		},
+		{
 			name: "unknown read scope",
 			doc:  manifestWith(t, map[string]string{`["accounts", "buckets", "transactions"]`: `["accounts", "secrets"]`}),
 			want: "permission",
