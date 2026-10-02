@@ -19,6 +19,9 @@ import (
 // Installing is the explicit trust grant: nothing runs at install time
 // except the declared build command.
 func Install(projectDir, source, path string) (LockEntry, error) {
+	if err := validatePluginPath(path); err != nil {
+		return LockEntry{}, err
+	}
 	absoluteProjectDir, err := filepath.Abs(projectDir)
 	if err != nil {
 		return LockEntry{}, fmt.Errorf("install: resolve project directory: %w", err)
@@ -130,6 +133,20 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 		return LockEntry{}, err
 	}
 	return entry, nil
+}
+
+// validatePluginPath keeps --path within the cloned repository. This is
+// separate from entrypoint validation because --path is supplied by the user
+// at install time, not by a trusted manifest.
+func validatePluginPath(path string) error {
+	if path == "" {
+		return nil
+	}
+	clean := filepath.Clean(filepath.FromSlash(path))
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("install: path %q must stay within the repository", path)
+	}
+	return nil
 }
 
 func gitRun(dir string, args ...string) (string, error) {
