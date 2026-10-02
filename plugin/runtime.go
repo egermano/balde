@@ -34,11 +34,11 @@ type hostFunc struct {
 }
 
 var hostFuncs = map[string]hostFunc{
-	"host/listAccounts":    {scope: "accounts", write: false},
-	"host/listBuckets":     {scope: "buckets", write: false},
+	"host/listAccounts":     {scope: "accounts", write: false},
+	"host/listBuckets":      {scope: "buckets", write: false},
 	"host/listTransactions": {scope: "transactions", write: false},
-	"host/addBucket":       {scope: "buckets", write: true},
-	"host/allocate":        {scope: "allocate", write: true},
+	"host/addBucket":        {scope: "buckets", write: true},
+	"host/allocate":         {scope: "allocate", write: true},
 }
 
 // Run starts the plugin, handshakes, executes command with args and returns

@@ -35,6 +35,7 @@ func NewRootCmd() *cobra.Command {
 		Version: fmt.Sprintf("%s (%s, %s)", version.Version, version.Commit, version.BuildDate),
 	}
 	root.PersistentFlags().StringVarP(&dir, "dir", "d", "", "Budget directory")
+	root.PersistentFlags().Bool("experimental", false, "opt in to experimental features")
 
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newUnlockCmd())

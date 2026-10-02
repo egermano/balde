@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -206,5 +207,56 @@ func TestInstalledPluginCommandRefusedWithoutOptIn(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "experimental") {
 		t.Errorf("error = %q, want experimental opt-in guidance", err)
+	}
+}
+
+func TestVacationPluginInstallAndPlanEndToEnd(t *testing.T) {
+	project := t.TempDir()
+	if err := os.Chdir(project); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BALDE_EXPERIMENTAL", "1")
+	setupInitBudget(t)
+
+	// Resolve the repository independently from test process CWD (other CLI
+	// tests intentionally change it while exercising --dir behavior).
+	_, sourceFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("could not resolve repository source location")
+	}
+	repo := filepath.Dir(filepath.Dir(sourceFile))
+
+	install := cli.NewRootCmd()
+	install.SetArgs([]string{"plugin", "install", repo, "--path", "plugins/vacation"})
+	var installOut bytes.Buffer
+	install.SetOut(&installOut)
+	install.SetErr(&installOut)
+	if err := install.Execute(); err != nil {
+		t.Fatalf("plugin install: %v\n%s", err, installOut.String())
+	}
+	if !strings.Contains(installOut.String(), "Skill installed: .agents/skills/balde-vacation") {
+		t.Errorf("install output = %q, want installed skill notice", installOut.String())
+	}
+	if _, err := os.Stat(filepath.Join(project, ".agents", "skills", "balde-vacation", "SKILL.md")); err != nil {
+		t.Fatalf("installed skill missing: %v", err)
+	}
+
+	account := cli.NewRootCmd()
+	account.SetArgs([]string{"account", "add", "checking", "checking", "100000"})
+	if err := account.Execute(); err != nil {
+		t.Fatalf("seed account: %v", err)
+	}
+
+	var planOut bytes.Buffer
+	plan := cli.NewRootCmd()
+	plan.SetArgs([]string{"vacation", "plan", "Japan", "--date", "2027-03", "--budget", "1000", "--json"})
+	plan.SetOut(&planOut)
+	plan.SetErr(&planOut)
+	if err := plan.Execute(); err != nil {
+		t.Fatalf("vacation plan: %v\n%s", err, planOut.String())
+	}
+	if !strings.Contains(planOut.String(), `"bucket_name":"vacation-japan-2027-03"`) ||
+		!strings.Contains(planOut.String(), `"allocated_now":200`) {
+		t.Errorf("plan JSON = %s, want bucket + first monthly installment", planOut.String())
 	}
 }

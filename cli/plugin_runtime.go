@@ -37,11 +37,12 @@ func registerInstalledPluginCommands(root *cobra.Command) {
 }
 
 func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability) *cobra.Command {
-	var asJSON bool
 	cmd := &cobra.Command{
-		Use:                capability.Name + " [args...]",
-		Short:              capability.Description,
-		DisableFlagParsing: false,
+		Use:   capability.Name + " [args...]",
+		Short: capability.Description,
+		// Plugin-owned flags (--date, --budget, …) are intentionally opaque to
+		// Cobra. The host only recognizes --json and passes all other args on.
+		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := requireExperimental(cmd); err != nil {
 				return err
@@ -78,7 +79,16 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 				},
 				Stderr: cmd.ErrOrStderr(),
 			}
-			result, err := runner.Run(capability.Name, args)
+			asJSON := false
+			pluginArgs := make([]string, 0, len(args))
+			for _, arg := range args {
+				if arg == "--json" {
+					asJSON = true
+					continue
+				}
+				pluginArgs = append(pluginArgs, arg)
+			}
+			result, err := runner.Run(capability.Name, pluginArgs)
 			if err != nil {
 				return err
 			}
@@ -96,6 +106,5 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 			return err
 		},
 	}
-	cmd.Flags().BoolVar(&asJSON, "json", false, "output as JSON")
 	return cmd
 }
