@@ -99,6 +99,7 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 		ArtifactHash: "sha256:" + hex.EncodeToString(hasher.Sum(nil)),
 		Capabilities: m.Capabilities,
 		Permissions:  m.Permissions,
+		Skill:        m.Skill,
 	}
 
 	lock, err := ReadLockfile(projectDir)
@@ -113,6 +114,14 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 	if err := lock.Save(projectDir); err != nil {
 		os.RemoveAll(finalDir)
 		return LockEntry{}, fmt.Errorf("install: %w", err)
+	}
+
+	if _, err := installSkill(projectDir, m, finalDir); err != nil {
+		// roll the whole install back: plugin + lockfile entry
+		os.RemoveAll(finalDir)
+		lock.Plugins = lock.Plugins[:len(lock.Plugins)-1]
+		_ = lock.Save(projectDir)
+		return LockEntry{}, err
 	}
 	return entry, nil
 }

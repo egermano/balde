@@ -19,6 +19,12 @@ type LockEntry struct {
 	ArtifactHash string       `json:"artifact_hash"`
 	Capabilities []Capability `json:"capabilities"`
 	Permissions  Permissions  `json:"permissions"`
+	Skill        string       `json:"skill,omitempty"`
+}
+
+// HasSkill reports whether the installed plugin ships an agent skill.
+func (e LockEntry) HasSkill() bool {
+	return e.Skill != ""
 }
 
 // Lockfile is the project-local plugin registry at

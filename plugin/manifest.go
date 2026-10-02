@@ -54,6 +54,7 @@ type Manifest struct {
 	Capabilities []Capability `json:"capabilities"`
 	Permissions  Permissions  `json:"permissions"`
 	Entrypoint   Entrypoint   `json:"entrypoint"`
+	Skill        string       `json:"skill,omitempty"`
 }
 
 // ParseManifest parses and validates a balde-plugin.json document.
