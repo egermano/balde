@@ -88,6 +88,16 @@ func TestParseManifestInvalid(t *testing.T) {
 			doc:  manifestWith(t, map[string]string{`{"build": "go build -o bin/vacation .", "run": "bin/vacation"}`: `{"build": "make"}`}),
 			want: "entrypoint",
 		},
+		{
+			name: "entrypoint run escapes plugin dir",
+			doc:  manifestWith(t, map[string]string{`"run": "bin/vacation"`: `"run": "../evil"`}),
+			want: "entrypoint",
+		},
+		{
+			name: "entrypoint run absolute path",
+			doc:  manifestWith(t, map[string]string{`"run": "bin/vacation"`: `"run": "/bin/sh"`}),
+			want: "entrypoint",
+		},
 	}
 
 	for _, tt := range tests {

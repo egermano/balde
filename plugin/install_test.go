@@ -53,11 +53,92 @@ func git(t *testing.T, dir string, args ...string) string {
 	return string(out)
 }
 
+// fixtureRepoSubdir creates a git repository whose plugin lives at subpath
+// inside the repo (non-root plugin folder) and returns the repo path.
+func fixtureRepoSubdir(t *testing.T, name, subpath string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, subpath)
+	manifest := `{
+  "name": "` + name + `",
+  "version": "0.1.0",
+  "protocol": 1,
+  "capabilities": [{"type": "command", "name": "` + name + `", "description": "test plugin"}],
+  "permissions": {"read": ["buckets"]},
+  "entrypoint": {"run": "bin/plugin"}
+}`
+	if err := os.MkdirAll(filepath.Join(pluginDir, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(pluginDir, "balde-plugin.json"), manifest)
+	writeFile(t, filepath.Join(pluginDir, "bin", "plugin"), "#!/bin/sh\necho hello\n")
+	git(t, dir, "init", "-q")
+	git(t, dir, "add", "-A")
+	git(t, dir, "-c", "user.name=test", "-c", "user.email=test@test", "commit", "-q", "-m", "init")
+	return dir
+}
+
+func TestInstallFromSubdirectory(t *testing.T) {
+	project := t.TempDir()
+	repo := fixtureRepoSubdir(t, "vacation", "plugins/vacation")
+
+	entry, err := plugin.Install(project, repo, "plugins/vacation")
+	if err != nil {
+		t.Fatalf("Install() error = %v, want nil", err)
+	}
+
+	if entry.Path != "plugins/vacation" {
+		t.Errorf("Path = %q, want plugins/vacation", entry.Path)
+	}
+
+	// only the subdirectory content is installed as plugin source
+	artifact := filepath.Join(project, ".balde", "plugins", "src", "vacation", "bin", "plugin")
+	if _, err := os.Stat(artifact); err != nil {
+		t.Errorf("artifact not installed at %s: %v", artifact, err)
+	}
+	if _, err := os.Stat(filepath.Join(project, ".balde", "plugins", "src", "vacation", "balde-plugin.json")); err != nil {
+		t.Errorf("manifest not installed: %v", err)
+	}
+}
+
+func TestInstallSubdirectoryMissingManifest(t *testing.T) {
+	project := t.TempDir()
+	repo := fixtureRepoSubdir(t, "vacation", "plugins/vacation")
+
+	if _, err := plugin.Install(project, repo, "plugins/elsewhere"); err == nil {
+		t.Error("Install(missing subpath) = nil error, want error")
+	}
+}
+
+func TestInstallLeavesNoStagingDirectories(t *testing.T) {
+	project := t.TempDir()
+	repo := fixtureRepo(t, "vacation")
+
+	if _, err := plugin.Install(project, repo, ""); err != nil {
+		t.Fatalf("Install() error = %v, want nil", err)
+	}
+	if _, err := plugin.Install(project, t.TempDir(), ""); err == nil {
+		t.Fatal("expected duplicate-install error")
+	}
+
+	pluginsDir := filepath.Join(project, ".balde", "plugins")
+	entries, err := os.ReadDir(pluginsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".install-") {
+			t.Errorf("staging directory %s left behind in %s", e.Name(), pluginsDir)
+		}
+	}
+}
+
 func TestInstallFromLocalRepo(t *testing.T) {
 	project := t.TempDir()
 	repo := fixtureRepo(t, "vacation")
 
-	entry, err := plugin.Install(project, repo)
+	entry, err := plugin.Install(project, repo, "")
 	if err != nil {
 		t.Fatalf("Install() error = %v, want nil", err)
 	}
@@ -99,10 +180,10 @@ func TestInstallDuplicateRejected(t *testing.T) {
 	project := t.TempDir()
 	repo := fixtureRepo(t, "vacation")
 
-	if _, err := plugin.Install(project, repo); err != nil {
+	if _, err := plugin.Install(project, repo, ""); err != nil {
 		t.Fatalf("first Install() error = %v, want nil", err)
 	}
-	if _, err := plugin.Install(project, repo); err == nil {
+	if _, err := plugin.Install(project, repo, ""); err == nil {
 		t.Error("second Install() = nil error, want already-installed error")
 	}
 }
@@ -115,7 +196,7 @@ func TestInstallInvalidManifestRejected(t *testing.T) {
 	git(t, dir, "add", "-A")
 	git(t, dir, "-c", "user.name=test", "-c", "user.email=test@test", "commit", "-q", "-m", "init")
 
-	if _, err := plugin.Install(project, dir); err == nil {
+	if _, err := plugin.Install(project, dir, ""); err == nil {
 		t.Error("Install(invalid manifest) = nil error, want error")
 	}
 

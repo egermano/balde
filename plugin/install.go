@@ -11,24 +11,35 @@ import (
 	"strings"
 )
 
-// Install clones the plugin source (a git repository path or URL) into the
-// project, validates its manifest, runs the optional build step, verifies
-// the entrypoint artifact, and records everything in the lockfile.
+// Install clones the plugin source (a git repository path or URL), reads the
+// manifest at the optional subpath (for repos hosting plugins in non-root
+// folders), validates it, runs the optional build step, verifies the
+// entrypoint artifact, and records everything in the lockfile.
 //
 // Installing is the explicit trust grant: nothing runs at install time
 // except the declared build command.
-func Install(projectDir, source string) (LockEntry, error) {
+func Install(projectDir, source, path string) (LockEntry, error) {
 	pluginsDir := filepath.Join(projectDir, ".balde", "plugins")
 
-	tmp, err := os.MkdirTemp("", "balde-install-")
+	// Stage inside the plugins directory so the final move never crosses a
+	// filesystem boundary (os.Rename fails with EXDEV across devices).
+	if err := os.MkdirAll(pluginsDir, 0o755); err != nil {
+		return LockEntry{}, fmt.Errorf("install: %w", err)
+	}
+	tmp, err := os.MkdirTemp(pluginsDir, ".install-")
 	if err != nil {
 		return LockEntry{}, fmt.Errorf("install: %w", err)
 	}
 	defer os.RemoveAll(tmp)
 
-	src := filepath.Join(tmp, "src")
-	if out, err := gitRun(tmp, "clone", "--quiet", source, src); err != nil {
+	cloneDir := filepath.Join(tmp, "repo")
+	if out, err := gitRun(tmp, "clone", "--quiet", ResolveSource(source), cloneDir); err != nil {
 		return LockEntry{}, fmt.Errorf("install: clone: %w\n%s", err, out)
+	}
+
+	src := cloneDir
+	if path != "" {
+		src = filepath.Join(cloneDir, filepath.FromSlash(path))
 	}
 
 	sha, err := gitRun(src, "rev-parse", "HEAD")
@@ -71,17 +82,19 @@ func Install(projectDir, source string) (LockEntry, error) {
 		os.RemoveAll(finalDir)
 		return LockEntry{}, fmt.Errorf("install: entrypoint %s not found: %w", m.Entrypoint.Run, err)
 	}
-	defer file.Close()
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, file); err != nil {
+		file.Close()
 		os.RemoveAll(finalDir)
 		return LockEntry{}, fmt.Errorf("install: hash artifact: %w", err)
 	}
+	file.Close()
 
 	entry := LockEntry{
 		Name:         m.Name,
 		Version:      m.Version,
 		Source:       source,
+		Path:         path,
 		SHA:          strings.TrimSpace(sha),
 		ArtifactHash: "sha256:" + hex.EncodeToString(hasher.Sum(nil)),
 		Capabilities: m.Capabilities,

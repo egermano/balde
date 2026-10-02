@@ -14,6 +14,7 @@ type LockEntry struct {
 	Name         string       `json:"name"`
 	Version      string       `json:"version"`
 	Source       string       `json:"source"`
+	Path         string       `json:"path,omitempty"`
 	SHA          string       `json:"sha"`
 	ArtifactHash string       `json:"artifact_hash"`
 	Capabilities []Capability `json:"capabilities"`

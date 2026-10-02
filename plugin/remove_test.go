@@ -12,7 +12,7 @@ func TestRemoveDeletesSourceAndLockEntry(t *testing.T) {
 	project := t.TempDir()
 	repo := fixtureRepo(t, "vacation")
 
-	if _, err := plugin.Install(project, repo); err != nil {
+	if _, err := plugin.Install(project, repo, ""); err != nil {
 		t.Fatalf("Install() error = %v, want nil", err)
 	}
 
