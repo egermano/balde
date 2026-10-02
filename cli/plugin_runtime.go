@@ -44,6 +44,15 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 		// Cobra. The host only recognizes --json and passes all other args on.
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// DisableFlagParsing leaves even inherited flags in args. Consume the
+			// experimental opt-in here before applying the runtime gate.
+			for _, arg := range args {
+				if arg == "--experimental" {
+					if err := cmd.Root().PersistentFlags().Set("experimental", "true"); err != nil {
+						return err
+					}
+				}
+			}
 			if err := requireExperimental(cmd); err != nil {
 				return err
 			}
@@ -84,6 +93,9 @@ func newInstalledPluginCmd(entry plugin.LockEntry, capability plugin.Capability)
 			for _, arg := range args {
 				if arg == "--json" {
 					asJSON = true
+					continue
+				}
+				if arg == "--experimental" {
 					continue
 				}
 				pluginArgs = append(pluginArgs, arg)

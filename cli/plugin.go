@@ -26,6 +26,9 @@ func experimentalEnabled(cmd *cobra.Command) bool {
 	if v := os.Getenv("BALDE_EXPERIMENTAL"); v == "1" {
 		return true
 	}
+	if v, err := cmd.Root().PersistentFlags().GetBool("experimental"); err == nil && v {
+		return true
+	}
 	v, err := cmd.Flags().GetBool("experimental")
 	return err == nil && v
 }
