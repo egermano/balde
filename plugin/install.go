@@ -82,11 +82,9 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 	}
 
 	if m.Entrypoint.Build != "" {
-		cmd := exec.Command("sh", "-c", m.Entrypoint.Build)
-		cmd.Dir = finalDir
-		if out, err := cmd.CombinedOutput(); err != nil {
+		if err := runBuild(finalDir, m.Entrypoint.Build); err != nil {
 			os.RemoveAll(finalDir)
-			return LockEntry{}, fmt.Errorf("install: build: %w\n%s", err, out)
+			return LockEntry{}, fmt.Errorf("install: %w", err)
 		}
 	}
 
@@ -139,6 +137,43 @@ func Install(projectDir, source, path string) (LockEntry, error) {
 		return LockEntry{}, err
 	}
 	return entry, nil
+}
+
+// runBuild executes the manifest build command. The environment disables Go
+// VCS stamping: staged plugin sources sit inside the project directory, so
+// `go build` would otherwise try to read the VCS state of whatever repository
+// encloses the project and fail (git exit 128) when that state is unreadable.
+// Plugin builds never need stamped VCS info — integrity is pinned by the
+// commit SHA and artifact hash recorded in the lockfile.
+func runBuild(dir, buildCmd string) error {
+	cmd := exec.Command("sh", "-c", buildCmd)
+	cmd.Dir = dir
+	cmd.Env = withBuildVCSDisabled(os.Environ())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("build: %w\n%s", err, out)
+	}
+	return nil
+}
+
+// withBuildVCSDisabled appends -buildvcs=false to GOFLAGS, preserving any
+// GOFLAGS the user already set (and any explicit -buildvcs choice in it).
+func withBuildVCSDisabled(env []string) []string {
+	const flag = "-buildvcs=false"
+	hasGOFLAGS := false
+	for i, e := range env {
+		if !strings.HasPrefix(e, "GOFLAGS=") {
+			continue
+		}
+		hasGOFLAGS = true
+		if !strings.Contains(e, "-buildvcs=") {
+			env[i] = e + " " + flag
+		}
+	}
+	if !hasGOFLAGS {
+		env = append(env, "GOFLAGS="+flag)
+	}
+	return env
 }
 
 // validatePluginPath keeps --path within the cloned repository. This is
