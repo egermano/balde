@@ -11,6 +11,7 @@ A budget manager CLI for the AI Agents era. Open-source, local-first, bucket bud
 - [Development](#development)
 - [Architecture](#architecture)
 - [Contributing](#contributing)
+- [Maintainer & Support](#maintainer--support)
 - [Usage](#usage)
 - [License](#license)
 
@@ -152,6 +153,14 @@ report/   Output formatting (tables, JSON, Markdown).
 
 All changes to `main` require a PR. Max 8 buckets — simplicity is a design goal.
 
+## Maintainer & Support
+
+Balde is built and maintained by [Bruno Germano](https://github.com/egermano).
+
+- 🐛 **Bugs and feature requests** — [open an issue](https://github.com/egermano/balde/issues)
+- 🔒 **Security reports** — see [SECURITY.md](SECURITY.md) (private reporting only, please)
+- 💬 **Questions** — [open an issue](https://github.com/egermano/balde/issues) with your question; there are no separate forums yet
+
 ## Usage
 
 ```sh
@@ -166,4 +175,4 @@ balde status --json                            # full budget snapshot
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
