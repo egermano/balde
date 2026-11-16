@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egermano/balde/cli"
 )
@@ -325,15 +326,20 @@ func TestVacationPluginInstallAndPlanEndToEnd(t *testing.T) {
 		t.Fatalf("seed account: %v", err)
 	}
 
+	// Target a month 5 months out so the plan math is stable regardless of
+	// when the test runs: months=5, first installment=ceil(1000/5)=200.
+	target := time.Now().UTC().AddDate(0, 5, 0)
+	targetYM := target.Format("2006-01")
+
 	var planOut bytes.Buffer
 	plan := cli.NewRootCmd()
-	plan.SetArgs([]string{"vacation", "plan", "Japan", "--date", "2027-03", "--budget", "1000", "--json"})
+	plan.SetArgs([]string{"vacation", "plan", "Japan", "--date", targetYM, "--budget", "1000", "--json"})
 	plan.SetOut(&planOut)
 	plan.SetErr(&planOut)
 	if err := plan.Execute(); err != nil {
 		t.Fatalf("vacation plan: %v\n%s", err, planOut.String())
 	}
-	if !strings.Contains(planOut.String(), `"bucket_name":"vacation-japan-2027-03"`) ||
+	if !strings.Contains(planOut.String(), `"bucket_name":"vacation-japan-`+targetYM+`"`) ||
 		!strings.Contains(planOut.String(), `"allocated_now":200`) {
 		t.Errorf("plan JSON = %s, want bucket + first monthly installment", planOut.String())
 	}

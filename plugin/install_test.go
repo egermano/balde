@@ -235,3 +235,6 @@ func TestInstallInvalidManifestRejected(t *testing.T) {
 		t.Errorf("src dir = %v, want empty after failed install", entries)
 	}
 }
+
+// (VCS-independence of plugin builds is covered by
+// TestRunBuildSurvivesBrokenVCSState in install_internal_test.go.)
