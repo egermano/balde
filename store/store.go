@@ -12,9 +12,12 @@ import (
 )
 
 // Store is the persistence contract: core.Store plus connection lifecycle.
+// Discard closes without persisting pending state (no-op for stores that
+// write through) — the failure path for migrations.
 type Store interface {
 	core.Store
 	Close() error
+	Discard() error
 }
 
 type SQLiteStore struct {
@@ -128,6 +131,24 @@ func (s *SQLiteStore) ListBuckets() ([]core.Bucket, error) {
 	defer rows.Close()
 
 	var buckets = make([]core.Bucket, 0)
+	for rows.Next() {
+		var b core.Bucket
+		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived); err != nil {
+			return nil, err
+		}
+		buckets = append(buckets, b)
+	}
+	return buckets, nil
+}
+
+func (s *SQLiteStore) ListAllBuckets() ([]core.Bucket, error) {
+	rows, err := s.db.Query("SELECT id, name, target, balance, budget_id, archived FROM buckets")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	buckets := make([]core.Bucket, 0)
 	for rows.Next() {
 		var b core.Bucket
 		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived); err != nil {
@@ -315,4 +336,36 @@ func OpenStore(dbPath string, password string, envPassword string, config Config
 	}
 
 	return store, nil
+}
+
+// insertAccountRaw inserts an account row verbatim (explicit ID, no side
+// effects) for 1:1 budget migrations.
+func (s *SQLiteStore) insertAccountRaw(a core.Account) error {
+	_, err := s.db.Exec(
+		"INSERT INTO accounts (id, name, type, balance) VALUES (?, ?, ?, ?)",
+		a.ID, a.Name, a.Type, a.Balance,
+	)
+	return err
+}
+
+func (s *SQLiteStore) insertBucketRaw(b core.Bucket) error {
+	_, err := s.db.Exec(
+		"INSERT INTO buckets (id, name, target, balance, budget_id, archived) VALUES (?, ?, ?, ?, ?, ?)",
+		b.ID, strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived,
+	)
+	return err
+}
+
+func (s *SQLiteStore) insertTransactionRaw(t core.Transaction) error {
+	_, err := s.db.Exec(
+		"INSERT INTO transactions (id, amount, description, date, account_id, bucket_id, categorized) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		t.ID, t.Amount, t.Description, t.Date.Format("2006-01-02T15:04:05Z"), t.AccountID, t.BucketID, t.Categorized,
+	)
+	return err
+}
+
+// Discard closes the store without persisting anything. The plain SQLite
+// store writes through immediately, so this is equivalent to Close.
+func (s *SQLiteStore) Discard() error {
+	return s.Close()
 }

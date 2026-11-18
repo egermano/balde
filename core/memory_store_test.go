@@ -94,6 +94,16 @@ func (m *MemoryStore) ListBuckets() ([]core.Bucket, error) {
 	return result, nil
 }
 
+func (m *MemoryStore) ListAllBuckets() ([]core.Bucket, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]core.Bucket, 0, len(m.buckets))
+	for _, b := range m.buckets {
+		result = append(result, b)
+	}
+	return result, nil
+}
+
 func (m *MemoryStore) UpdateBucket(b core.Bucket) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

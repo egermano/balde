@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/egermano/balde/app"
 	"github.com/egermano/balde/store"
@@ -316,46 +317,20 @@ func newEncryptCmd() *cobra.Command {
 				return fmt.Errorf("create encrypted store: %w", err)
 			}
 
-			accounts, err := plainStore.ListAccounts()
-			if err != nil {
-				encStore.Close()
-				return fmt.Errorf("list accounts: %w", err)
-			}
-
-			for _, acc := range accounts {
-				if _, err := encStore.CreateAccount(acc); err != nil {
-					encStore.Close()
-					return fmt.Errorf("copy account: %w", err)
-				}
-			}
-
-			buckets, err := plainStore.ListBuckets()
-			if err != nil {
-				encStore.Close()
-				return fmt.Errorf("list buckets: %w", err)
-			}
-
-			for _, buck := range buckets {
-				if _, err := encStore.CreateBucket(buck); err != nil {
-					encStore.Close()
-					return fmt.Errorf("copy bucket: %w", err)
-				}
-			}
-
-			transactions, err := plainStore.ListTransactions()
-			if err != nil {
-				encStore.Close()
-				return fmt.Errorf("list transactions: %w", err)
-			}
-
-			for _, tx := range transactions {
-				if _, err := encStore.CreateTransaction(tx); err != nil {
-					encStore.Close()
-					return fmt.Errorf("copy transaction: %w", err)
-				}
+			// Copy rows verbatim (same IDs, same balances, archived
+			// buckets included). The previous Create*-based loop re-applied
+			// transaction deltas onto remapped IDs — silently corrupting
+			// balances — and failed outright on archived-bucket references
+			// (#51).
+			if err := store.CopyBudget(plainStore, encStore); err != nil {
+				encStore.Discard()
+				os.Remove(encDbPath)
+				os.Remove(store.GetSessionPath(encDbPath))
+				return fmt.Errorf("migrate data: %w", err)
 			}
 
 			if err := encStore.Close(); err != nil {
+				os.Remove(encDbPath)
 				return fmt.Errorf("close encrypted store: %w", err)
 			}
 
@@ -383,6 +358,14 @@ func newEncryptCmd() *cobra.Command {
 			encryptedConfig.ThousandsSeparator = config.ThousandsSeparator
 			if err := store.WriteConfig(dbPath, encryptedConfig); err != nil {
 				return fmt.Errorf("update config: %w", err)
+			}
+
+			// OpenStore wrote a session keyed to the pre-rename path; drop it
+			// and issue one for the final database path instead.
+			os.Remove(store.GetSessionPath(encDbPath))
+			session := store.Session{Password: password, LastAccessed: time.Now()}
+			if err := store.WriteSession(store.GetSessionPath(dbPath), session, 30*time.Minute); err != nil {
+				return fmt.Errorf("write session: %w", err)
 			}
 
 			fmt.Printf("Database encrypted successfully.\n")

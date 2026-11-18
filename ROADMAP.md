@@ -12,10 +12,10 @@ when they ship.
 - **Problem:** entering transactions by hand is the biggest daily friction; bank exports are where the data already lives.
 - **Done when:** `balde transaction import <file> --format csv` creates uncategorized transactions with column mapping and duplicate detection (date + amount + description), with tests for empty rows, negative amounts and varied date formats. Planned pipeline is described in [`AGENTS.md`](AGENTS.md#csv-import-pipeline-planned-not-built).
 
-### 2. Encrypted-migration integrity
+### 2. Encrypted-migration integrity — ✅ shipped
 
-- **Problem:** `balde encrypt` fails outright on budgets whose transactions reference archived buckets, and the failed run leaves a partial encrypted file that breaks retries — tracked in [#51](https://github.com/egermano/balde/issues/51).
-- **Done when:** migration preserves entity IDs (or remaps every reference), with a regression test that encrypts a budget containing an archived bucket and verifies all references resolve.
+- **Problem:** `balde encrypt` failed outright on budgets whose transactions referenced archived buckets, and the failed run left a partial encrypted file that broke retries. Worse: "successful" migrations re-applied transaction deltas onto remapped IDs, silently corrupting balances ([#51](https://github.com/egermano/balde/issues/51)).
+- **Shipped in:** raw 1:1 row copy (`store.CopyBudget`) preserving IDs and balances, archived buckets included; failed migrations discard instead of persisting; the post-encrypt session actually works. Regression: `TestEncryptCmd_MigrationPreservesStateWithArchivedBucket`.
 
 ### 3. Backup & restore
 

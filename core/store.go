@@ -12,6 +12,9 @@ type Store interface {
 	CreateBucket(b Bucket) (Bucket, error)
 	GetBucket(id string) (Bucket, error)
 	ListBuckets() ([]Bucket, error)
+	// ListAllBuckets includes archived buckets — used by migrations that
+	// must copy every row; normal flows use ListBuckets.
+	ListAllBuckets() ([]Bucket, error)
 	UpdateBucket(b Bucket) error
 	DeleteBucket(id string) error
 
