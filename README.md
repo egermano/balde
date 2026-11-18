@@ -19,6 +19,8 @@ A budget manager CLI for the AI Agents era. Open-source, local-first, bucket bud
 
 Balde implements the [bucket budgeting method](https://www.budgetwithbuckets.com/guide/everything/) in a CLI tool designed for both direct use and AI agent integration. All data stays local in SQLite. Amounts are stored as integer cents — no floats.
 
+> **Status: alpha.** The core budget flow (accounts, buckets, transactions, allocation, encryption) is stable and tested, but the CLI surface may still change. The plugin system is experimental. See [Releases](https://github.com/egermano/balde/releases) for the current version.
+
 ## Installation
 
 Install or upgrade `balde` with a single command.
@@ -133,15 +135,21 @@ go test ./core/ -v -count=1
 ## Architecture
 
 ```
-core/     Business logic (Budget, Account, Bucket, Transaction). Zero I/O deps.
-store/    SQLite persistence (Store interface). Uses modernc.org/sqlite (no CGO).
-import/   File parsers (CSV now, OFX/QIF later).
-cli/      Cobra CLI layer. Supports --json output.
-i18n/     Locale dictionaries (JSON). MVP = English only.
-report/   Output formatting (tables, JSON, Markdown).
+core/      Domain model (Budget, Account, Bucket, Transaction, rain math). Pure Go, zero I/O.
+store/     SQLite persistence + AES-256-GCM encryption and session handling (pure Go, no CGO).
+app/       Application services: typed operations with the stable JSON wire schema (DTOs).
+cli/       Cobra CLI. Parses args, calls app, formats output. Supports --json.
+plugin/    Plugin runtime: manifest validation, lockfile pinning, verified subprocess execution.
+plugins/   Bundled plugins (vacation planner) — examples of the plugin format.
+version/   Build metadata injected at compile time.
+docs/      Plugin docs (docs/plugins) and internal planning notes (docs/internal).
+.agents/   The balde agent skill (skills/balde) installed by `npx skills add`.
+scripts/   Installer smoke tests used by CI.
 ```
 
-`core` has zero imports from `cli`, `store`, or any I/O. It is a pure Go library.
+Dependency rule: `core` is a pure library — no SQLite, no filesystem, no user-facing strings. `store` implements the `Store` interface defined in `core`. `app` sits between `cli` and `core`, exposing DTOs so core types never cross the wire.
+
+**Planned, not built yet:** CSV import, i18n locales, report formatting. The internal roadmap lives in [`docs/internal/`](docs/internal/).
 
 ## Contributing
 
@@ -163,15 +171,37 @@ Balde is built and maintained by [Bruno Germano](https://github.com/egermano).
 
 ## Usage
 
+A real session — every command below runs exactly as shown (amounts in **integer cents**; negative = expense; buckets are referenced by **ID**, see `balde view buckets`):
+
 ```sh
-balde init                                    # create budget DB, set frequency & currency
-balde account add checking checking 100000    # add account (amount in cents)
-balde bucket add housing 50000                # add bucket with monthly target
-balde transaction add -50000 "rent" acc1 bkt1  # record expense
-balde allocate 50000 housing                  # allocate rain to bucket
-balde rain                                     # show unallocated money
-balde status --json                            # full budget snapshot
+balde init                                    # create budget: 6 default buckets, currency, encryption
+balde account add checking checking 100000    # account with starting balance → id 1
+balde transaction add 250000 "salary" 1 1     # income to account 1, bucket 1
+balde transaction add -50000 "rent" 1 2       # expense from account 1, bucket 2
+balde allocate 50000 2 --force                # move rain (unallocated) into bucket 2
+balde rain                                    # → Rain (unallocated): 50000 cents
+balde view buckets                            # id, target, balance, fill %
+balde status --json                           # full snapshot — for scripts and agents
 ```
+
+`balde allocate` asks for confirmation when the amount exceeds available rain; `--force` skips it. Most commands run in the current directory; only `init` and `unlock` accept `--dir`.
+
+Encryption (optional, set at init or added later):
+
+```sh
+balde encrypt                                 # migrate a plain budget to AES-256-GCM
+balde unlock                                  # decrypt for the session (password prompt)
+balde lock                                    # invalidate the session
+```
+
+Plugins (experimental — opt in with `--experimental` or `BALDE_EXPERIMENTAL=1`):
+
+```sh
+balde plugin install github.com/egermano/balde --path plugins/vacation
+BALDE_EXPERIMENTAL=1 balde plugin list
+```
+
+See [docs/plugins](docs/plugins/README.md) for the plugin format, protocol and bundled plugins.
 
 ## License
 
