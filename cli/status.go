@@ -11,8 +11,9 @@ func newStatusCmd() *cobra.Command {
 	var asJSON bool
 
 	cmd := &cobra.Command{
-		Use:  "status",
-		Args: cobra.NoArgs,
+		Use:   "status",
+		Short: "Show a full snapshot of the budget",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := openBudgetDB(cmd)
 			if err != nil {

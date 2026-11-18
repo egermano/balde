@@ -13,8 +13,9 @@ import (
 func newAllocateCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
-		Use:  "allocate <amount> <bucket_id>",
-		Args: cobra.ExactArgs(2),
+		Use:   "allocate <amount> <bucket_id>",
+		Short: "Allocate rain (unallocated money) to a bucket",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			amount, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
@@ -60,8 +61,9 @@ func newAllocateCmd() *cobra.Command {
 
 func newRainCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:  "rain",
-		Args: cobra.NoArgs,
+		Use:   "rain",
+		Short: "Show unallocated money available to distribute",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := openBudgetDB(cmd)
 			if err != nil {

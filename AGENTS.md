@@ -35,31 +35,36 @@ Budget manager CLI written in **Go** using the **bucket budgeting method**. Key 
 - 50/30/20 rule as initial suggestion
 - "Make it Rain" allocation loop
 
-See `.opencode/docs/` for full PRD, roadmap, and project spec.
+See `docs/internal/` for full PRD, roadmap, and project spec (internal working notes — may describe planned features).
 
 ## Architecture
 
 ```
-core/     — Business logic (Budget, Account, Bucket, Transaction). Zero deps on CLI/store.
-store/    — SQLite persistence (Store interface). Uses modernc.org/sqlite (pure Go, no CGO).
-import/   — File parsers (CSV now, OFX/QIF later). Common Importer interface.
-cli/      — Cobra CLI layer. Thin — parses args, calls core, formats output. Supports --json.
-i18n/     — Locale dictionaries (JSON). MVP = en only. All user-facing strings externalized.
-report/   — Output formatting (tables, JSON, Markdown).
+core/     — Business logic (Budget, Account, Bucket, Transaction). Zero deps on CLI/store. Pure Go.
+store/    — SQLite persistence + AES-256-GCM encryption (Store interface). Pure Go, no CGO.
+app/      — Application services: typed operations with the stable JSON wire schema (DTOs).
+cli/      — Cobra CLI layer. Thin — parses args, calls app, formats output. Supports --json.
+plugin/   — Plugin runtime: manifest validation, lockfile pinning, verified subprocess execution.
+plugins/  — Bundled plugins (vacation planner).
+docs/     — Plugin docs (docs/plugins) and internal planning notes (docs/internal).
 ```
 
 ### Dependency rule (violating this breaks the project)
 
 ```
-cli ──→ core ←── store
-          ↑
-       (core has ZERO imports from cli, store, i18n, or any I/O)
+cli ──→ app ──→ core ←── store
+              ↑
+       (core has ZERO imports from cli, app, store, or any I/O)
 ```
 
-- `core` is a pure Go library — no filesystem, no SQLite, no fmt, no user-facing strings
+- `core` is a pure Go library — no filesystem, no SQLite, no user-facing strings
 - `store` implements a `Store` interface defined in `core` (in-memory mock for tests, SQLite for production)
-- `cli` and `report` are the only layers that touch `i18n` and currency formatting
+- `app` wraps core with DTOs so core types never cross the wire; `cli` and the plugin runtime are the only layers that touch user I/O
 - An AI agent can import `core` as a standalone library to manage a budget programmatically
+
+### Planned, not built yet (do not reference as existing)
+
+CSV/OFX/QIF import (`import/`), i18n locale dictionaries (`i18n/`), report formatting (`report/`). The internal roadmap lives in `docs/internal/`.
 
 ### Core domain types
 
@@ -115,21 +120,23 @@ rain = sum(account balances) - sum(bucket balances)
 ## Commands (CLI surface)
 
 ```
-balde init                        # Create budget DB, optionally encrypted
-balde unlock [--password <pass>]  # Unlock encrypted DB (or use BALDE_PASSWORD env var)
-balde lock                        # Lock encrypted DB by invalidating session
-balde encrypt [--password <pass>] # Migrate plain DB to encrypted
-balde config set locale <code>    # Switch language
+balde init [--dir <path>]            # Create budget DB, optionally encrypted
+balde unlock [--password <pass>]     # Unlock encrypted DB (or use BALDE_PASSWORD env var)
+balde lock                           # Lock encrypted DB by invalidating session
+balde encrypt [--password <pass>]    # Migrate plain DB to encrypted
 balde account add <name> <type> <balance>
-balde bucket add <name> <limit>
-balde transaction add <amount> <desc> <account> <bucket>
-balde transaction import <file> --format csv
-balde allocate <amount> <bucket>  # Distribute rain to bucket
-balde rain                         # Show unallocated money + fill status
+balde bucket add <name> <target>
+balde bucket delete <id>
+balde transaction add <amount> <desc> <account_id> <bucket_id>
+balde allocate <amount> <bucket_id> [--force]
+balde rain                           # Show unallocated money
 balde view buckets [--json]
 balde view transactions [--json]
-balde status                       # JSON snapshot of entire budget state
+balde status [--json]                # JSON snapshot of entire budget state
+balde plugin install|list|remove     # Experimental (--experimental)
 ```
+
+Commands other than `init`/`unlock` run from the budget directory.
 
 ### Amount input conventions
 
@@ -143,28 +150,29 @@ balde status                       # JSON snapshot of entire budget state
 
 1. **`core`** — highest priority, pure logic, no I/O. Use in-memory store. Table-driven tests.
    Must cover: rain calculation (positive/negative/zero), bucket balance tracking, account balance tracking, frequency conversion, overspend detection, 8+ bucket warning, duplicate transaction detection, amount parsing with different separators
-2. **`store`** — SQLite CRUD, schema migration, balance integrity after operations
-3. **`import`** — CSV column mapping, edge cases (empty rows, negative amounts, date formats), deduplication
-4. **`cli`** — integration only: command routing, `--json` produces valid JSON, structured error messages
-5. **`i18n`** — locale loading, key resolution, graceful fallback on missing keys
+2. **`store`** — SQLite CRUD, schema migration, balance integrity after operations, encryption round-trips
+3. **`plugin`** — manifest validation, lockfile pinning, subprocess runtime safety
+4. **`app`/`cli`** — integration only: command routing, `--json` produces valid JSON, structured error messages
 
 ### Testing principles
 
 - Test **external behavior** (inputs → outputs, state transitions), never implementation details
 - A test must survive internal refactoring as long as observable behavior is unchanged
 - In-memory `Store` implementation lives in `core` test package for isolated, fast tests
+- Tests must be environment-independent: no reliance on current date, network, or host VCS state
 
 ## Constraints
 
 - Free/opensource version has **6 fixed buckets**: financial freedom, fixed costs, pleasures, comfort, knowledge, goals. Created on `balde init`.
 - Max 8 buckets — system must warn if exceeded (2 custom buckets available in free tier).
-- MVP language: English only (architecture supports adding locales by just adding a JSON file)
+- MVP language: English only (i18n infrastructure is planned, not built)
 - One currency per budget
-- CSV import only in MVP; OFX/QIF post-MVP
-- No transfer between buckets in MVP (allocate-from-rain only)
-- No multi-user, no cloud sync, no web UI, no plugin system in MVP
+- CSV import is planned, not built; OFX/QIF post-MVP
+- No transfer between buckets (allocate-from-rain only)
+- No multi-user, no cloud sync, no web UI
+- Plugin system exists but is **experimental** (gated behind `--experimental`)
 
-## CSV Import Pipeline
+## CSV Import Pipeline (planned, not built)
 
 1. Read file → parse rows into raw records
 2. Map columns (date, description, amount) using user-provided or default mapping
@@ -175,10 +183,9 @@ balde status                       # JSON snapshot of entire budget state
 ## i18n & Currency Design
 
 - `core` never produces human-readable text — it returns structured data
-- `cli` and `report` are the only layers that call `i18n` for string lookup and currency formatting
-- Adding a language = adding a JSON file, zero code changes
-- Error messages include machine-readable error codes (structured format for agent parsing)
+- Currency formatting (symbol, decimal/thousands separators) is config-driven, read from `balde.json`
+- Locale dictionaries (`i18n/`) are planned: adding a language should require only a JSON file, zero code changes
 
 ## AI-Friendly Output
 
-All `view` and `status` commands support `--json` for structured output. `--quiet` suppresses decorative text for agent-driven usage. Error messages are structured with error codes.
+All `view` and `status` commands support `--json` for structured output. Error messages are plain-text but deterministic (`Error: <operation>: <cause>`), making them parseable by agents.
