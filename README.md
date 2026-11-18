@@ -129,11 +129,16 @@ See `.agents/skills/balde/SKILL.md` for detailed agent instructions and workflow
 
 ## Demo
 
-**Terminal walkthrough** — recorded from a real session with synthetic data ([`demo/balde-quickstart.cast`](demo/balde-quickstart.cast), playable with `asciinema play`):
+**Terminal walkthrough** — recorded from a real session with synthetic data:
+
+![balde quickstart demo](demo/balde-quickstart.gif)
+
+The same recording is available as an
+[asciinema cast](demo/balde-quickstart.cast) — playable at full fidelity
+straight from this repository, no cloning or upload needed:
 
 ```sh
-git clone https://github.com/egermano/balde.git && cd balde
-asciinema play demo/balde-quickstart.cast
+asciinema play https://raw.githubusercontent.com/egermano/balde/main/demo/balde-quickstart.cast
 ```
 
 A textual equivalent with expected output lives in [examples/](examples/).
