@@ -8,6 +8,7 @@ A budget manager CLI for the AI Agents era. Open-source, local-first, bucket bud
 - [Requirements](#requirements)
 - [Getting Started](#getting-started)
 - [AI Agent Integration](#ai-agent-integration)
+- [Data privacy: local-first & LLMs](#data-privacy-local-first--llms)
 - [Development](#development)
 - [Architecture](#architecture)
 - [Contributing](#contributing)
@@ -67,6 +68,16 @@ Requires Go 1.26+.
 
 ## Getting Started
 
+The fastest way to see the whole method in action — a scripted flow with synthetic data:
+
+```sh
+git clone https://github.com/egermano/balde.git
+cd balde
+./examples/quickstart.sh
+```
+
+See [examples/](examples/) for the walk-through and expected output. To hack on Balde itself:
+
 ```sh
 git clone https://github.com/egermano/balde.git
 cd balde
@@ -114,6 +125,16 @@ npx skills add egermano/balde --skill balde
 ```
 
 See `.agents/skills/balde/SKILL.md` for detailed agent instructions and workflows.
+
+## Data privacy: local-first & LLMs
+
+Balde itself is local-first: your budget lives in a SQLite file on your disk, and the CLI talks to no network service. **That is not a privacy guarantee against the tools you put around it.** If you let an AI agent operate your budget — with this skill or any other — the agent's tools and provider configuration decide what data is read and sent. Prompts, command outputs and `--json` snapshots can all reach the model provider's servers.
+
+Practical consequences:
+
+- Use synthetic or non-sensitive data when experimenting or writing demos
+- Check your agent tooling's data-retention and training policies for anything you consider private
+- Encrypted budgets (`balde encrypt`) protect the file at rest, not the data once an agent has unlocked and read it
 
 ## Development
 
