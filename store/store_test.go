@@ -15,16 +15,16 @@ func TestSQLiteStore_EnforcesNormalizedBucketNameUniquenessPerBudget(t *testing.
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	if err := s.CreateBucket(core.Bucket{Name: "Fixed Costs", BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "Fixed Costs", BudgetID: "b1"}); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "  fixed costs  ", BudgetID: "b1"}); err == nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "  fixed costs  ", BudgetID: "b1"}); err == nil {
 		t.Fatal("expected duplicate bucket error")
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "   ", BudgetID: "b1"}); err == nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "   ", BudgetID: "b1"}); err == nil {
 		t.Fatal("expected empty bucket name error")
 	}
-	if err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b2"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b2"}); err != nil {
 		t.Fatalf("same name in another budget: %v", err)
 	}
 
@@ -41,10 +41,10 @@ func TestSQLiteStore_UpdateBucketEnforcesNormalizedNameUniqueness(t *testing.T) 
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	if err := s.CreateBucket(core.Bucket{Name: "Housing", BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "Housing", BudgetID: "b1"}); err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "Food", BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "Food", BudgetID: "b1"}); err != nil {
 		t.Fatalf("create food: %v", err)
 	}
 	buckets, err := s.ListBuckets()
@@ -153,7 +153,7 @@ func TestSQLiteStore_CreateAndGetAccount(t *testing.T) {
 		Type:    core.AccountChecking,
 		Balance: 100000,
 	}
-	if err := s.CreateAccount(a); err != nil {
+	if _, err := s.CreateAccount(a); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
 
@@ -198,7 +198,7 @@ func TestSQLiteStore_CreateAndGetBucket(t *testing.T) {
 		Balance:  0,
 		BudgetID: "b1",
 	}
-	if err := s.CreateBucket(bk); err != nil {
+	if _, err := s.CreateBucket(bk); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
 
@@ -281,7 +281,7 @@ func TestSQLiteStore_DeleteBucketArchivesAndFreesName(t *testing.T) {
 	if !archived.Archived {
 		t.Fatal("expected bucket to be archived")
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "housing", Target: 60000, BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "housing", Target: 60000, BudgetID: "b1"}); err != nil {
 		t.Fatalf("reuse archived bucket name: %v", err)
 	}
 }
@@ -289,10 +289,10 @@ func TestSQLiteStore_DeleteBucketArchivesAndFreesName(t *testing.T) {
 func TestSQLiteStore_CreateAndGetTransaction(t *testing.T) {
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
-	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking}); err != nil {
+	if _, err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking}); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "housing", BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "housing", BudgetID: "b1"}); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
 
@@ -303,7 +303,7 @@ func TestSQLiteStore_CreateAndGetTransaction(t *testing.T) {
 		AccountID:   "1",
 		BucketID:    "1",
 	}
-	if err := s.CreateTransaction(tx); err != nil {
+	if _, err := s.CreateTransaction(tx); err != nil {
 		t.Fatalf("create transaction: %v", err)
 	}
 
@@ -345,14 +345,14 @@ func TestSQLiteStore_CreateTransaction_AtomicallyAppliesBalances(t *testing.T) {
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
+	if _, err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"}); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
 
-	if err := s.CreateTransaction(core.Transaction{
+	if _, err := s.CreateTransaction(core.Transaction{
 		Amount: -2500, Description: "groceries", Date: parseDate("2025-01-15"),
 		AccountID: "1", BucketID: "1", Categorized: true,
 	}); err != nil {
@@ -373,11 +373,11 @@ func TestSQLiteStore_CreateTransaction_RollsBackWhenBucketDoesNotExist(t *testin
 	s, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
+	if _, err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
 
-	err := s.CreateTransaction(core.Transaction{
+	_, err := s.CreateTransaction(core.Transaction{
 		Amount: -2500, Description: "groceries", Date: parseDate("2025-01-15"),
 		AccountID: "1", BucketID: "missing", Categorized: true,
 	})
@@ -400,7 +400,7 @@ func TestSQLiteStore_DeleteTransaction_AtomicallyReversesBalances(t *testing.T) 
 	defer cleanup()
 	s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000})
 	s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"})
-	if err := s.CreateTransaction(core.Transaction{
+	if _, err := s.CreateTransaction(core.Transaction{
 		Amount: -2500, Description: "groceries", Date: parseDate("2025-01-15"),
 		AccountID: "1", BucketID: "1", Categorized: true,
 	}); err != nil {
@@ -484,5 +484,51 @@ func TestSQLiteStore_UpdateAccount(t *testing.T) {
 	}
 	if updated.Balance != 150000 {
 		t.Errorf("expected balance=150000, got %d", updated.Balance)
+	}
+}
+
+// TestBudgetAddReturnsCreatedEntity guards the create contract: Budget.Add*
+// must return exactly the entity that was created, not a positional guess
+// from a re-list. The buckets table has a UNIQUE normalized-name index, so
+// SQLite returns rows alphabetically — `buckets[len-1]` used to return the
+// alphabetically-last bucket (e.g. reporting "pleasures" for a new "housing").
+func TestBudgetAddReturnsCreatedEntity(t *testing.T) {
+	s, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	b := core.NewBudget("default", s)
+
+	if _, err := b.AddBucket("pleasures", 0); err != nil {
+		t.Fatalf("seed bucket: %v", err)
+	}
+	got, err := b.AddBucket("housing", 50000)
+	if err != nil {
+		t.Fatalf("add bucket: %v", err)
+	}
+	if got.Name != "housing" || got.Target != 50000 || got.ID == "" {
+		t.Errorf("AddBucket = %+v, want name=housing target=50000 with assigned ID", got)
+	}
+	stored, err := s.GetBucket(got.ID)
+	if err != nil {
+		t.Fatalf("get created bucket: %v", err)
+	}
+	if stored.Name != "housing" || stored.Target != 50000 {
+		t.Errorf("stored bucket = %+v, want housing/50000", stored)
+	}
+
+	acc, err := b.AddAccount("checking", "checking", 100000)
+	if err != nil {
+		t.Fatalf("add account: %v", err)
+	}
+	if acc.Name != "checking" || acc.ID == "" {
+		t.Errorf("AddAccount = %+v, want checking with assigned ID", acc)
+	}
+
+	tx, err := b.AddTransaction(-4200, "coffee", time.Now(), acc.ID, got.ID)
+	if err != nil {
+		t.Fatalf("add transaction: %v", err)
+	}
+	if tx.ID == "" || tx.Amount != -4200 || tx.Description != "coffee" {
+		t.Errorf("AddTransaction = %+v, want coffee/-4200 with assigned ID", tx)
 	}
 }

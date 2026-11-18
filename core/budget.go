@@ -21,15 +21,11 @@ func (b *Budget) AddAccount(name string, accountType AccountType, initialBalance
 		Type:    accountType,
 		Balance: initialBalance,
 	}
-	if err := b.store.CreateAccount(a); err != nil {
-		return Account{}, fmt.Errorf("add account: %w", err)
-	}
-
-	accounts, err := b.store.ListAccounts()
+	created, err := b.store.CreateAccount(a)
 	if err != nil {
 		return Account{}, fmt.Errorf("add account: %w", err)
 	}
-	return accounts[len(accounts)-1], nil
+	return created, nil
 }
 
 func (b *Budget) AddBucket(name string, target int64) (Bucket, error) {
@@ -56,15 +52,11 @@ func (b *Budget) AddBucket(name string, target int64) (Bucket, error) {
 		Balance:  0,
 		BudgetID: b.ID,
 	}
-	if err := b.store.CreateBucket(bk); err != nil {
-		return Bucket{}, fmt.Errorf("add bucket: %w", err)
-	}
-
-	buckets, err = b.store.ListBuckets()
+	created, err := b.store.CreateBucket(bk)
 	if err != nil {
 		return Bucket{}, fmt.Errorf("add bucket: %w", err)
 	}
-	return buckets[len(buckets)-1], nil
+	return created, nil
 }
 
 func (b *Budget) AddTransaction(amount int64, description string, date time.Time, accountID, bucketID string) (Transaction, error) {
@@ -76,16 +68,11 @@ func (b *Budget) AddTransaction(amount int64, description string, date time.Time
 		BucketID:    bucketID,
 		Categorized: bucketID != "",
 	}
-	if err := b.store.CreateTransaction(t); err != nil {
-		return Transaction{}, fmt.Errorf("add transaction: %w", err)
-	}
-
-	// Retrieve the actual transaction with the assigned ID
-	transactions, err := b.store.ListTransactions()
+	created, err := b.store.CreateTransaction(t)
 	if err != nil {
 		return Transaction{}, fmt.Errorf("add transaction: %w", err)
 	}
-	return transactions[len(transactions)-1], nil
+	return created, nil
 }
 
 func (b *Budget) DeleteTransaction(id string) (Transaction, error) {

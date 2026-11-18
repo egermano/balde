@@ -55,7 +55,7 @@ func TestOpenStore_EncryptedDB_NewDB(t *testing.T) {
 	}
 
 	account := core.Account{Name: "Test Account", Type: "checking", Balance: 1000}
-	if err := store.CreateAccount(account); err != nil {
+	if _, err := store.CreateAccount(account); err != nil {
 		t.Fatalf("failed to create account: %v", err)
 	}
 
@@ -82,7 +82,7 @@ func TestOpenStore_EncryptedDB_ExistingDB(t *testing.T) {
 	}
 
 	account := core.Account{Name: "Test Account", Type: "checking", Balance: 1000}
-	if err := store1.CreateAccount(account); err != nil {
+	if _, err := store1.CreateAccount(account); err != nil {
 		t.Fatalf("failed to create account: %v", err)
 	}
 
@@ -147,7 +147,7 @@ func TestOpenStore_SessionFile(t *testing.T) {
 	}
 
 	account := core.Account{Name: "Test Account", Type: "checking", Balance: 1000}
-	if err := store1.CreateAccount(account); err != nil {
+	if _, err := store1.CreateAccount(account); err != nil {
 		t.Fatalf("failed to create account: %v", err)
 	}
 

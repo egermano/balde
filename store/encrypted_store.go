@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/egermano/balde/core"
@@ -251,12 +252,19 @@ func (s *EncryptedSQLiteStore) migrate() error {
 	return migrate(s.db)
 }
 
-func (s *EncryptedSQLiteStore) CreateAccount(a core.Account) error {
-	_, err := s.db.Exec(
+func (s *EncryptedSQLiteStore) CreateAccount(a core.Account) (core.Account, error) {
+	res, err := s.db.Exec(
 		"INSERT INTO accounts (name, type, balance) VALUES (?, ?, ?)",
 		a.Name, a.Type, a.Balance,
 	)
-	return err
+	if err != nil {
+		return core.Account{}, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return core.Account{}, err
+	}
+	return s.GetAccount(strconv.FormatInt(id, 10))
 }
 
 func (s *EncryptedSQLiteStore) GetAccount(id string) (core.Account, error) {
@@ -296,12 +304,19 @@ func (s *EncryptedSQLiteStore) UpdateAccount(a core.Account) error {
 	return err
 }
 
-func (s *EncryptedSQLiteStore) CreateBucket(b core.Bucket) error {
-	_, err := s.db.Exec(
+func (s *EncryptedSQLiteStore) CreateBucket(b core.Bucket) (core.Bucket, error) {
+	res, err := s.db.Exec(
 		"INSERT INTO buckets (name, target, balance, budget_id, archived) VALUES (?, ?, ?, ?, ?)",
 		strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived,
 	)
-	return err
+	if err != nil {
+		return core.Bucket{}, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return core.Bucket{}, err
+	}
+	return s.GetBucket(strconv.FormatInt(id, 10))
 }
 
 func (s *EncryptedSQLiteStore) GetBucket(id string) (core.Bucket, error) {
@@ -352,37 +367,44 @@ func (s *EncryptedSQLiteStore) DeleteBucket(id string) error {
 	return nil
 }
 
-func (s *EncryptedSQLiteStore) CreateTransaction(t core.Transaction) error {
+func (s *EncryptedSQLiteStore) CreateTransaction(t core.Transaction) (core.Transaction, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return core.Transaction{}, err
 	}
 	defer tx.Rollback()
 
 	result, err := tx.Exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", t.Amount, t.AccountID)
 	if err != nil {
-		return err
+		return core.Transaction{}, err
 	}
 	if rows, _ := result.RowsAffected(); rows != 1 {
-		return fmt.Errorf("account not found: %s", t.AccountID)
+		return core.Transaction{}, fmt.Errorf("account not found: %s", t.AccountID)
 	}
 	if t.Categorized {
 		result, err = tx.Exec("UPDATE buckets SET balance = balance + ? WHERE id = ? AND archived = 0", t.Amount, t.BucketID)
 		if err != nil {
-			return err
+			return core.Transaction{}, err
 		}
 		if rows, _ := result.RowsAffected(); rows != 1 {
-			return fmt.Errorf("bucket not found: %s", t.BucketID)
+			return core.Transaction{}, fmt.Errorf("bucket not found: %s", t.BucketID)
 		}
 	}
-	_, err = tx.Exec(
+	result, err = tx.Exec(
 		"INSERT INTO transactions (amount, description, date, account_id, bucket_id, categorized) VALUES (?, ?, ?, ?, ?, ?)",
 		t.Amount, t.Description, t.Date.Format("2006-01-02T15:04:05Z"), t.AccountID, t.BucketID, t.Categorized,
 	)
 	if err != nil {
-		return err
+		return core.Transaction{}, err
 	}
-	return tx.Commit()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return core.Transaction{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return core.Transaction{}, err
+	}
+	return s.GetTransaction(strconv.FormatInt(id, 10))
 }
 
 func (s *EncryptedSQLiteStore) DeleteTransaction(id string) error {

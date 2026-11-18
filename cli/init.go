@@ -323,7 +323,7 @@ func newEncryptCmd() *cobra.Command {
 			}
 
 			for _, acc := range accounts {
-				if err := encStore.CreateAccount(acc); err != nil {
+				if _, err := encStore.CreateAccount(acc); err != nil {
 					encStore.Close()
 					return fmt.Errorf("copy account: %w", err)
 				}
@@ -336,7 +336,7 @@ func newEncryptCmd() *cobra.Command {
 			}
 
 			for _, buck := range buckets {
-				if err := encStore.CreateBucket(buck); err != nil {
+				if _, err := encStore.CreateBucket(buck); err != nil {
 					encStore.Close()
 					return fmt.Errorf("copy bucket: %w", err)
 				}
@@ -349,7 +349,7 @@ func newEncryptCmd() *cobra.Command {
 			}
 
 			for _, tx := range transactions {
-				if err := encStore.CreateTransaction(tx); err != nil {
+				if _, err := encStore.CreateTransaction(tx); err != nil {
 					encStore.Close()
 					return fmt.Errorf("copy transaction: %w", err)
 				}
