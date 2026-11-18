@@ -2,7 +2,7 @@
 <!-- One-line description of the change -->
 
 ## Why
-<!-- Motivation and context -->
+<!-- Motivation and context; link the issue if one exists -->
 
 ## Type
 - [ ] feat
@@ -12,7 +12,8 @@
 - [ ] chore
 
 ## Checklist
-- [ ] Tests pass (`make test`)
+- [ ] Behavior change comes with a test (red → green → refactor)
+- [ ] Tests pass (`make test-short`)
 - [ ] Lint clean (`make lint`)
-- [ ] Followed TDD (red → green → refactor)
-- [ ] No secrets committed
+- [ ] Tests are environment-independent (no reliance on current date, network or host VCS state)
+- [ ] No real financial data or secrets included anywhere
