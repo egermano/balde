@@ -24,14 +24,14 @@ func newMemoryStore() *memoryStore {
 	}
 }
 
-func (m *memoryStore) CreateAccount(a core.Account) error {
+func (m *memoryStore) CreateAccount(a core.Account) (core.Account, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if a.ID == "" {
 		a.ID = fmt.Sprintf("acc-%d", len(m.accounts)+1)
 	}
 	m.accounts[a.ID] = a
-	return nil
+	return a, nil
 }
 
 func (m *memoryStore) GetAccount(id string) (core.Account, error) {
@@ -64,14 +64,14 @@ func (m *memoryStore) UpdateAccount(a core.Account) error {
 	return nil
 }
 
-func (m *memoryStore) CreateBucket(b core.Bucket) error {
+func (m *memoryStore) CreateBucket(b core.Bucket) (core.Bucket, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if b.ID == "" {
 		b.ID = fmt.Sprintf("bkt-%d", len(m.buckets)+1)
 	}
 	m.buckets[b.ID] = b
-	return nil
+	return b, nil
 }
 
 func (m *memoryStore) GetBucket(id string) (core.Bucket, error) {
@@ -118,21 +118,21 @@ func (m *memoryStore) DeleteBucket(id string) error {
 	return nil
 }
 
-func (m *memoryStore) CreateTransaction(t core.Transaction) error {
+func (m *memoryStore) CreateTransaction(t core.Transaction) (core.Transaction, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	account, ok := m.accounts[t.AccountID]
 	if !ok {
-		return fmt.Errorf("account not found: %s", t.AccountID)
+		return core.Transaction{}, fmt.Errorf("account not found: %s", t.AccountID)
 	}
 	account.Balance += t.Amount
 	if t.Categorized {
 		bucket, ok := m.buckets[t.BucketID]
 		if !ok {
-			return fmt.Errorf("bucket not found: %s", t.BucketID)
+			return core.Transaction{}, fmt.Errorf("bucket not found: %s", t.BucketID)
 		}
 		if bucket.Archived {
-			return fmt.Errorf("bucket archived: %s", t.BucketID)
+			return core.Transaction{}, fmt.Errorf("bucket archived: %s", t.BucketID)
 		}
 		bucket.Balance += t.Amount
 		m.buckets[t.BucketID] = bucket
@@ -142,7 +142,7 @@ func (m *memoryStore) CreateTransaction(t core.Transaction) error {
 	}
 	m.accounts[t.AccountID] = account
 	m.transactions[t.ID] = t
-	return nil
+	return t, nil
 }
 
 func (m *memoryStore) GetTransaction(id string) (core.Transaction, error) {

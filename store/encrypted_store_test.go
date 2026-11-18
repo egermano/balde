@@ -18,16 +18,16 @@ func TestEncryptedSQLiteStore_EnforcesNormalizedBucketNameUniquenessPerBudget(t 
 	}
 	defer s.Close()
 
-	if err := s.CreateBucket(core.Bucket{Name: "Fixed Costs", BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "Fixed Costs", BudgetID: "b1"}); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b1"}); err == nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b1"}); err == nil {
 		t.Fatal("expected duplicate bucket error")
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "   ", BudgetID: "b1"}); err == nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "   ", BudgetID: "b1"}); err == nil {
 		t.Fatal("expected empty bucket name error")
 	}
-	if err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b2"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: " fixed costs ", BudgetID: "b2"}); err != nil {
 		t.Fatalf("same name in another budget: %v", err)
 	}
 
@@ -79,7 +79,7 @@ func TestEncryptedSQLiteStore_ArchivesBucketAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open encrypted store: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "Goals", BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "Goals", BudgetID: "b1"}); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
 	if err := s.DeleteBucket("1"); err != nil {
@@ -111,7 +111,7 @@ func TestEncryptedSQLiteStore_ArchivesBucketWithoutDeletingTransaction(t *testin
 	defer s.Close()
 	s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking})
 	s.CreateBucket(core.Bucket{Name: "food", BudgetID: "b1"})
-	if err := s.CreateTransaction(core.Transaction{Amount: -100, Description: "snack", AccountID: "1", BucketID: "1", Categorized: true}); err != nil {
+	if _, err := s.CreateTransaction(core.Transaction{Amount: -100, Description: "snack", AccountID: "1", BucketID: "1", Categorized: true}); err != nil {
 		t.Fatalf("create transaction: %v", err)
 	}
 	if err := s.DeleteBucket("1"); err != nil {
@@ -163,7 +163,7 @@ func TestEncryptedSQLiteStore_CreateAndGetAccount(t *testing.T) {
 		Type:    core.AccountChecking,
 		Balance: 100000,
 	}
-	if err := s.CreateAccount(a); err != nil {
+	if _, err := s.CreateAccount(a); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
 
@@ -192,13 +192,13 @@ func TestEncryptedSQLiteStore_CreateTransaction_AtomicallyAppliesBalances(t *tes
 	}
 	defer s.Close()
 
-	if err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
+	if _, err := s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000}); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
-	if err := s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"}); err != nil {
+	if _, err := s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"}); err != nil {
 		t.Fatalf("create bucket: %v", err)
 	}
-	if err := s.CreateTransaction(core.Transaction{
+	if _, err := s.CreateTransaction(core.Transaction{
 		Amount: -2500, Description: "groceries", AccountID: "1", BucketID: "1", Categorized: true,
 	}); err != nil {
 		t.Fatalf("create transaction: %v", err)
@@ -223,7 +223,7 @@ func TestEncryptedSQLiteStore_DeleteTransaction_AtomicallyReversesBalances(t *te
 	defer s.Close()
 	s.CreateAccount(core.Account{Name: "checking", Type: core.AccountChecking, Balance: 10000})
 	s.CreateBucket(core.Bucket{Name: "food", Target: 5000, BudgetID: "b1"})
-	if err := s.CreateTransaction(core.Transaction{
+	if _, err := s.CreateTransaction(core.Transaction{
 		Amount: -2500, Description: "groceries", AccountID: "1", BucketID: "1", Categorized: true,
 	}); err != nil {
 		t.Fatalf("create transaction: %v", err)
