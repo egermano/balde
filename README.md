@@ -8,6 +8,7 @@ A budget manager CLI for the AI Agents era. Open-source, local-first, bucket bud
 - [Requirements](#requirements)
 - [Getting Started](#getting-started)
 - [AI Agent Integration](#ai-agent-integration)
+- [Demo](#demo)
 - [Data privacy: local-first & LLMs](#data-privacy-local-first--llms)
 - [Development](#development)
 - [Architecture](#architecture)
@@ -125,6 +126,19 @@ npx skills add egermano/balde --skill balde
 ```
 
 See `.agents/skills/balde/SKILL.md` for detailed agent instructions and workflows.
+
+## Demo
+
+**Terminal walkthrough** — recorded from a real session with synthetic data ([`demo/balde-quickstart.cast`](demo/balde-quickstart.cast), playable with `asciinema play`):
+
+```sh
+git clone https://github.com/egermano/balde.git && cd balde
+asciinema play demo/balde-quickstart.cast
+```
+
+A textual equivalent with expected output lives in [examples/](examples/).
+
+**Agent integration** — a real OpenCode session using the balde skill to check rain, allocate and report status: [docs/agent-demo.md](docs/agent-demo.md).
 
 ## Data privacy: local-first & LLMs
 

@@ -265,7 +265,7 @@ Account ID: 1
 Add a new bucket (envelope) for budgeting.
 
 **Clarification needed:**
-- Check bucket count first by running `balde status --json` — if already 8, warn: "Maximum 8 buckets reached. Free version supports 8; cannot delete buckets in current CLI."
+- Check bucket count first by running `balde status --json` — if already 8, warn: "Maximum 8 buckets reached. Buckets can be archived with 'balde bucket delete <id>' (confirmed non-empty buckets are archived, not removed)."
 - If target amount ambiguous, ask user to confirm
 
 ```bash
@@ -278,7 +278,7 @@ Confirmation:
 Bucket ID: 3
 ```
 
-**Why warn about 8 buckets:** This is a hard constraint in the free tier. Users need to know before they try to add a 9th bucket. **Important:** There is no CLI command to delete buckets.
+**Why warn about 8 buckets:** This is a hard constraint in the free tier. Users need to know before they try to add a 9th bucket. Archived buckets free a slot: `balde bucket delete <id>` archives (it does not hard-delete data).
 
 ### balde transaction add <amount> <desc> <account_id> <bucket_id>
 Record a financial transaction.
@@ -461,9 +461,9 @@ You have $500 of rain available. Would you like to allocate to the "fixed costs"
 
 The skill works around these current CLI limitations:
 
-- **No bucket deletion:** Once 8 buckets are created, you cannot add more. There is no `balde bucket delete` command.
+- **No account deletion:** Accounts cannot be deleted once created; archive-style flows only exist for buckets (`balde bucket delete <id>` archives).
 - **No separate account view:** To see accounts, use `balde status --json` (no `balde view accounts` command).
-- **No transaction update/delete:** Transactions are immutable once created.
+- **No transaction update:** Transactions cannot be edited once created (`balde transaction delete <id>` exists; edits require delete + re-add).
 - **Interactive init prompt:** `balde init` prompts for encryption. Use `echo "N" | balde init` for non-interactive mode.
 - **No --dir flag for most commands:** Only `init` and `unlock` support `--dir`. Run other commands from budget directory.
 
