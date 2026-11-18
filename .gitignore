@@ -9,3 +9,6 @@ balde.json
 balde-workspace/
 plugins/*/skill-workspace/
 .opencode/worktrees/
+
+# private maintainer notes (application checklists, strategy docs)
+checklist-*.md
