@@ -14,7 +14,7 @@ when they ship.
 
 ### 2. Encrypted-migration integrity
 
-- **Problem:** `balde encrypt` re-creates accounts and buckets with new auto-increment IDs, so transactions that referenced archived buckets can end up pointing at nothing.
+- **Problem:** `balde encrypt` fails outright on budgets whose transactions reference archived buckets, and the failed run leaves a partial encrypted file that breaks retries — tracked in [#51](https://github.com/egermano/balde/issues/51).
 - **Done when:** migration preserves entity IDs (or remaps every reference), with a regression test that encrypts a budget containing an archived bucket and verifies all references resolve.
 
 ### 3. Backup & restore
