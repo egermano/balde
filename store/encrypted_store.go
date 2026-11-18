@@ -48,6 +48,37 @@ func (s *EncryptedSQLiteStore) Close() error {
 	return s.saveEncrypted()
 }
 
+// Discard closes the in-memory store WITHOUT persisting the encrypted file,
+// so a failed migration can never leave a partial (poisoned) database
+// behind. See #51.
+func (s *EncryptedSQLiteStore) Discard() error {
+	return s.db.Close()
+}
+
+func (s *EncryptedSQLiteStore) insertAccountRaw(a core.Account) error {
+	_, err := s.db.Exec(
+		"INSERT INTO accounts (id, name, type, balance) VALUES (?, ?, ?, ?)",
+		a.ID, a.Name, a.Type, a.Balance,
+	)
+	return err
+}
+
+func (s *EncryptedSQLiteStore) insertBucketRaw(b core.Bucket) error {
+	_, err := s.db.Exec(
+		"INSERT INTO buckets (id, name, target, balance, budget_id, archived) VALUES (?, ?, ?, ?, ?, ?)",
+		b.ID, strings.TrimSpace(b.Name), b.Target, b.Balance, b.BudgetID, b.Archived,
+	)
+	return err
+}
+
+func (s *EncryptedSQLiteStore) insertTransactionRaw(t core.Transaction) error {
+	_, err := s.db.Exec(
+		"INSERT INTO transactions (id, amount, description, date, account_id, bucket_id, categorized) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		t.ID, t.Amount, t.Description, t.Date.Format("2006-01-02T15:04:05Z"), t.AccountID, t.BucketID, t.Categorized,
+	)
+	return err
+}
+
 func (s *EncryptedSQLiteStore) loadEncrypted() error {
 	data, err := os.ReadFile(s.encPath)
 	if err != nil {
@@ -338,6 +369,24 @@ func (s *EncryptedSQLiteStore) ListBuckets() ([]core.Bucket, error) {
 	defer rows.Close()
 
 	var buckets []core.Bucket
+	for rows.Next() {
+		var b core.Bucket
+		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived); err != nil {
+			return nil, err
+		}
+		buckets = append(buckets, b)
+	}
+	return buckets, nil
+}
+
+func (s *EncryptedSQLiteStore) ListAllBuckets() ([]core.Bucket, error) {
+	rows, err := s.db.Query("SELECT id, name, target, balance, budget_id, archived FROM buckets")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	buckets := make([]core.Bucket, 0)
 	for rows.Next() {
 		var b core.Bucket
 		if err := rows.Scan(&b.ID, &b.Name, &b.Target, &b.Balance, &b.BudgetID, &b.Archived); err != nil {
